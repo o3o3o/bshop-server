@@ -31,13 +31,14 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            sudo pip install pipenv
+            pip install pipenv
             pipenv install --deploy --system
 
       - save_cache:
           paths:
             - ".venv"
             - "/usr/local/bin"
+            - .local/share/virtualenvs
             - ~/.local/share/virtualenvs/venv 
           key: pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
 
