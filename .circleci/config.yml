@@ -23,22 +23,22 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-						- pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-						- pip-packages-v1-{{ .Branch }}-
-						- pip-packages-v1-
+            - pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+            - pip-packages-v1-{{ .Branch }}-
+            - pip-packages-v1-
 
       - run:
           name: install dependencies
           command: |
-					  pipenv install --deploy --system
+            pipenv install --deploy --system
 
       - save_cache:
-					paths:
-						- ~/.local/share/virtualenvs/venv 
-					key: pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+          paths:
+            - ~/.local/share/virtualenvs/venv 
+          key: pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
 
       - run:
           name: run tests
           command: |
-						pipenv shell
+            pipenv shell
             python manage.py test
