@@ -8,8 +8,7 @@ jobs:
     docker:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
-      - image: python:3.7.1-slim
-        PIPENV_VENV_IN_PROJECT: true
+      - image: circleci/python:3.7.1
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -24,30 +23,21 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-            - pip-packages-v1-{{ .Branch }}-
-            - pip-packages-v1-
+            - pip-packages-v3-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+            - pip-packages-v3-{{ .Branch }}-
+            - pip-packages-v3-
 
       - run:
           name: install dependencies
           command: |
-            pip install pipenv
-            pipenv install --deploy --system
+            pipenv install --deploy
 
       - save_cache:
           paths:
-            - ".venv"
-            - "/usr/local/bin"
-            - .local/share/virtualenvs
-            - ~/.local/share/virtualenvs/venv 
-          key: pip-packages-v1-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+            - ~/.local/share/virtualenvs/
+          key: pip-packages-v3-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
 
       - run:
           name: run tests
           command: |
-            pipenv run manage.py test
-      - store_test_results: # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-          path: test-results
-      - store_artifacts: # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-          path: test-results
-          destination: tr1
+            pipenv run bshop/manage.py test
