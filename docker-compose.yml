@@ -1,0 +1,83 @@
+version: '3.5'
+
+x-celery:
+  &base-celery
+  restart: always
+  image: &web_img ${WEB_IMAGE:-shopweb}
+  command: celery -A bshop worker --loglevel=INFO -Q celery
+  volumes:
+    - .:/app
+  depends_on:
+    - "db"
+    - "redis"
+  environment:
+    - ENVIRONMENT=development
+
+
+services:
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  db:
+    image: postgres:11
+    volumes:
+      - ${PGDATA_DIR:-pgdata}:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres} # Set POSTGRES_USER in .env for prod
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password} # Set POSTGRES_PASSWORD in .env for prod
+      - POSTGRES_DB=shopdb
+
+  web:
+    build: .
+    restart: always
+    image: *web_img
+    volumes:
+      - .:/app
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - "db"
+      - "redis"
+    environment:
+      - ENVIRONMENT=development
+
+  celery:
+    << : *base-celery
+    command: celery -A bshop worker --loglevel=INFO -Q celery
+
+  flower:
+    restart: always
+    image: *web_img
+    command: celery -A bshop flower --basic_auth=${FUSER:-flower}:${FPASSWD:-flower} --loglevel=INFO
+    ports:
+      - "127.0.0.1:5555:5555"
+    volumes:
+      - .:/app
+    depends_on:
+      - "redis"
+      - "celery"
+
+  nginx:
+    image: nginx
+    restart: always
+    environment:
+      - NGINX_HOST=${NGINX_HOST:-localhost 127.0.0.1 dev-shop.o3o3o.me} # Set NGINX_HOST in .env
+      - NGINX_PORT=${NGINX_PORT:-80} # Set NGINX_PORT in .env
+      - ESC=$$
+    volumes:
+      - ./etc/nginx_default.template:/etc/nginx/conf.d/default.template
+    command: /bin/bash -c "envsubst < /etc/nginx/conf.d/default.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
+
+    ports:
+      - 80:80
+    depends_on:
+      - "web"
+
+volumes:
+  pgdata:

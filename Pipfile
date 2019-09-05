@@ -7,6 +7,23 @@ verify_ssl = true
 
 [packages]
 django = "*"
+whitenoise = "*"
+django-redis = "*"
+fakeredis = "*"
+django-graphql-jwt = "*"
+django-nose = "*"
+flower = "*"
+twilio = "*"
+django-ratelimit = "*"
+factory-boy = "*"
+gunicorn = "*"
+psycopg2-binary = "*"
+graphene-django = "*"
+tox-pipenv = "*"
+celery = "*"
+tox = "*"
+django-extensions = "*"
+django-fakeredis = "*"
 
 [requires]
 python_version = "3.7"
