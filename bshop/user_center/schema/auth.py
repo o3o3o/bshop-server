@@ -16,7 +16,7 @@ from common.ratelimit import ratelimit
 from common.schema import Result
 from user_center.schema.user import Me
 from user_center.models import ShopUser
-from user_center.auth import verified_phone
+from user_center.auth import verified_phone, verify_code
 from sms_service import send_verify_code
 
 logger = logging.getLogger(__name__)
@@ -50,27 +50,16 @@ class RequestVerificationCode(graphene.Mutation):
     @ratelimit(key="gql:phone", rate="5/m", block=True)
     def mutate(self, info, phone):
         request = info.context
-        code = get_random_code()
-
         try:
-            phone = parse_phone(phone)
+            request_verify_code(request, phone)
         except exceptions.InvalidPhone as e:
             return Result(success=False, message=e.message)
-
-        try:
-            send_verify_code(request, phone, code)
-            request.session["verify_code"] = {
-                "phone": phone,
-                "code": code,
-                "retry": 0,
-                "expired_at": time.time() + SMS_EXPIRATION,
-            }
-
         except exceptions.VerifyCodeError as e:
             return Result(success=False, message=e.message)
         except Exception as e:
             logger.error(e, exc_info=True)
             return Result(success=False, message="system_error")
+
         return Result(success=True)
 
 
@@ -82,43 +71,24 @@ class VerifyCode(graphene.Mutation):
     Output = Result
 
     def mutate(self, info, phone, code):
-        session = info.context.session
-        vc = session.get("verify_code", None)
-        error_msg = "wrong_verification_code"
+        request = info.context
+
+        verify_code(request, phone, code)
 
         try:
-            phone = parse_phone(phone)
+            verified_phone(request, phone, code)
         except exceptions.InvalidPhone as e:
             return Result(success=False, message=e.message)
+        except exceptions.WrongVerifyCode as e:
+            return Result(success=False, message=e.message)
 
-        if not vc or phone != vc.get("phone", None):
-            return Result(success=False, message=error_msg)
-
-        retry = vc.get("retry", 0)
-        vc["retry"] = retry + 1
-
-        if retry > MAX_RETRY_VERIFY:
-            return Result(success=False, message="too_much_retry")
-
-        if (
-            vc.get("code", None) != code
-            or not vc.get("expired_at", None)
-            or vc.get("used", False)
-            or time.time() > vc.get("expired_at", 0)
-        ):
-            return Result(success=False, message=error_msg)
-
-        vc["used"] = True
-        session["verified_phone"] = {
-            "phone": phone,
-            "expired_at": time.time() + SMS_EXPIRATION,
-        }
         return Result(success=True)
 
 
 class SignIn(graphql_jwt.JSONWebTokenMutation):
     class Arguments:
         phone = graphene.String(required=True)
+        code = graphene.String(required=True)
 
     me = graphene.Field(Me)
     token = graphene.String()
@@ -131,11 +101,9 @@ class SignIn(graphql_jwt.JSONWebTokenMutation):
     @token_auth
     def mutate(cls, root, info, **kwargs):
 
+        request = info.context
         phone = kwargs.get("phone")
-        try:
-            phone = parse_phone(phone)
-        except exceptions.InvalidPhone as e:
-            raise exceptions.GQLError(e.message)
+        verify_code(request, phone, code)
 
         # copy phone to username for token_auth
         kwargs["username"] = phone

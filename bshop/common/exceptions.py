@@ -47,3 +47,7 @@ class TooLongQuery(ErrorResultException):
 
 class NeedVerifyPhone(ErrorResultException):
     default_message = "need_verify_phone"
+
+
+class WrongVerifyCode(ErrorResultException):
+    default_message = "wrong_verification_code"

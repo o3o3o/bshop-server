@@ -24,6 +24,7 @@ celery = "*"
 tox = "*"
 django-extensions = "*"
 django-fakeredis = "*"
+django-ipware = "*"
 
 [requires]
 python_version = "3.7"

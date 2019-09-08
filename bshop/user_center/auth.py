@@ -1,5 +1,12 @@
+import time
+import random
+import logging
 from django.conf import settings
 from django.contrib.auth.models import User
+
+from common import exceptions
+
+logger = logging.getLogger(__name__)
 
 
 def verified_phone(request, phone):
@@ -15,6 +22,59 @@ def verified_phone(request, phone):
         or vp["phone"] != phone
     ):
         raise NeedVerifyPhone
+
+
+SMS_EXPIRATION = 5 * 60
+MAX_RETRY_VERIFY = 5
+
+
+def get_random_code():
+    return "".join(["%s" % random.randint(0, 9) for num in range(0, 6)])
+
+
+def request_verify_code(request, phone):
+    request = info.context
+    code = get_random_code()
+
+    phone = parse_phone(phone)
+
+    send_verify_code(request, phone, code)
+    request.session["verify_code"] = {
+        "phone": phone,
+        "code": code,
+        "retry": 0,
+        "expired_at": time.time() + SMS_EXPIRATION,
+    }
+
+
+def verify_code(request, phone, code):
+    session = request.session
+    vc = session.get("verify_code", None)
+
+    phone = parse_phone(phone)
+
+    if not vc or phone != vc.get("phone", None):
+        raise exceptions.WrongVerifyCode
+
+    retry = vc.get("retry", 0)
+    vc["retry"] = retry + 1
+
+    if retry > MAX_RETRY_VERIFY:
+        raise exceptions.WrongVerifyCode("too_much_retry")
+
+    if (
+        vc.get("code", None) != code
+        or not vc.get("expired_at", None)
+        or vc.get("used", False)
+        or time.time() > vc.get("expired_at", 0)
+    ):
+        raise exceptions.WrongVerifyCode
+
+    vc["used"] = True
+    session["verified_phone"] = {
+        "phone": phone,
+        "expired_at": time.time() + SMS_EXPIRATION,
+    }
 
 
 class ShopUserAuthBackend:
