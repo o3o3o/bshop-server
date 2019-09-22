@@ -3,13 +3,10 @@ import logging
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
-from graphene_file_upload.scalars import Upload
 
-from django.conf import settings
-from common.upload import Uploader
-from common.schema import Result, DeviceType
-from user_center.schema.credential import Credential
-from user_center.models import ShopUser, PushToken
+# from django.conf import settings
+from common.schema import Result
+from user_center.models import ShopUser
 
 logger = logging.getLogger(__name__)
 

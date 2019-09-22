@@ -41,16 +41,40 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     def first_name(self):
         return self.user.first_name
 
-    @property
-    def nickname(self):
-        return self._nickname
+    # @property
+    # def nickname(self):
+    #    return self._nickname
 
-    @nickname.setter
-    def nickname(self, value):
-        self._nickname = value
-        self.save(update_fields=["_nickname"])
+    # @nickname.setter
+    # def nickname(self, value):
+    #    self._nickname = value
+    #    self.save(update_fields=["_nickname"])
+
+    @property
+    def avatar(self):
+        return self.avatar_url
 
     @avatar.setter
     def avatar(self, value):
         self.avatar_url = value
         self.save(update_fields=["avatar_url"])
+
+    def bind_openid(self, open_id, login_provider):
+        from common.schema import LoginProvider
+
+        bind_map = {
+            LoginProvider.WECHAT: "wechat_id",
+            LoginProvider.ALIPAY: "alipay_id",
+        }
+        if login_provider not in bind_map:
+            raise exceptions.DoNotSupportBindType
+
+        field = bind_map[login_provider]
+
+        val = getattr(self, field)
+        if val:
+            if val != open_id:
+                raise exceptions.AlreadyBinded
+        else:
+            setattr(self, field, open_id)
+            self.update_fields([field])

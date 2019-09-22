@@ -23,30 +23,14 @@ class EnumChoice(graphene.Enum):
         return choices
 
 
-class Exchange(EnumChoice):
-    BINANCE = "binance"
-    HUOBI = "huobipro"
-    OKEX = "okex"
+class LoginProvider(EnumChoice):
+    WECHAT = "WECHAT"
+    ALIPAY = "ALIPAY"
 
 
 class FiatCurrency(EnumChoice):
     USD = "USD"
     CNY = "CNY"
-
-
-class LabelType(EnumChoice):
-    CURRENCY = "CURRENCY"
-    EVENT = "EVENT"
-
-
-class CredentialStatus(EnumChoice):
-    NORMAL = "normal"
-    ERROR = "error"
-
-
-class DeviceType(EnumChoice):
-    IOS = "ios"
-    ANDROID = "android"
 
 
 class Amount(graphene.ObjectType):

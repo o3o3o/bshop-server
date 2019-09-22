@@ -4,6 +4,9 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+flake8 = "*"
+tox = "==3.7"
+tox-pipenv = "*"
 
 [packages]
 django = "*"
@@ -19,12 +22,13 @@ factory-boy = "*"
 gunicorn = "*"
 psycopg2-binary = "*"
 graphene-django = "*"
-tox-pipenv = "*"
 celery = "*"
-tox = "*"
 django-extensions = "*"
 django-fakeredis = "*"
 django-ipware = "*"
+django-graphql-ratelimit = "*"
+phonenumbers = "*"
+django-smsish2 = "==1.3.4"
 
 [requires]
 python_version = "3.7"

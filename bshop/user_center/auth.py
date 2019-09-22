@@ -1,15 +1,18 @@
 import time
 import random
 import logging
-from django.conf import settings
+
+# from django.conf import settings
 from django.contrib.auth.models import User
 
 from common import exceptions
+from common.phone import parse_phone
+from sms_service import send_verify_code
 
 logger = logging.getLogger(__name__)
 
 
-def verified_phone(request, phone):
+def has_verified_phone(request, phone):
     if not phone and hasattr(request, "user"):
         # NOTE: Assume phone is the same as username.
         phone = request.user.username
@@ -21,7 +24,7 @@ def verified_phone(request, phone):
         or time.time() > vp["expired_at"]
         or vp["phone"] != phone
     ):
-        raise NeedVerifyPhone
+        raise exceptions.NeedVerifyPhone
 
 
 SMS_EXPIRATION = 5 * 60
@@ -33,7 +36,6 @@ def get_random_code():
 
 
 def request_verify_code(request, phone):
-    request = info.context
     code = get_random_code()
 
     phone = parse_phone(phone)
@@ -80,7 +82,7 @@ def verify_code(request, phone, code):
 class ShopUserAuthBackend:
     # TODO: require phone verify
     def authenticate(self, request, username=None, **kw):
-        verified_phone(request, phone=username)
+        has_verified_phone(request, phone=username)
 
         try:
             user = User.objects.get(username=username)

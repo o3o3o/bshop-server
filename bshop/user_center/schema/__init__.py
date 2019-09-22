@@ -7,11 +7,6 @@ from common.phone import parse_phone
 from common.ratelimit import ratelimit
 from user_center.models import ShopUser
 from user_center.schema.auth import SignIn, SignUp, RequestVerificationCode, VerifyCode
-from user_center.schema.credential import (
-    CreateCredential,
-    DeleteCredential,
-    UpdateCredential,
-)
 from user_center.schema.user import Me, UpdateUserInfo
 
 

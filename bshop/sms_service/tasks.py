@@ -1,4 +1,4 @@
-from server.celery import app
+from bshop.celery import app
 from smsish.sms import send_sms
 from django.conf import settings
 

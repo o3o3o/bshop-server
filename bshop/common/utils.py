@@ -5,7 +5,7 @@ import json
 import decimal
 from functools import wraps
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime
 from django_redis import get_redis_connection
 
 from common import exceptions

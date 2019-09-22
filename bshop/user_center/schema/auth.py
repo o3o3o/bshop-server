@@ -1,40 +1,28 @@
-import time
-import random
 import logging
 import graphene
 import graphql_jwt
 
 from functools import wraps
-from django.contrib.auth import get_user_model
 from graphql_jwt.decorators import token_auth
-from graphql_jwt.exceptions import JSONWebTokenError
 from graphql_jwt.shortcuts import get_token, create_refresh_token
 
 from common import exceptions
 from common.phone import parse_phone
 from common.ratelimit import ratelimit
-from common.schema import Result
+from common.schema import Result, LoginProvider
 from user_center.schema.user import Me
 from user_center.models import ShopUser
-from user_center.auth import verified_phone, verify_code
-from sms_service import send_verify_code
+from user_center.auth import has_verified_phone, verify_code, request_verify_code
 
 logger = logging.getLogger(__name__)
 
-SMS_EXPIRATION = 5 * 60
-MAX_RETRY_VERIFY = 5
 
-
-def get_random_code():
-    return "".join(["%s" % random.randint(0, 9) for num in range(0, 6)])
-
-
-def require_verify_phone(fn):
+def require_verified_phone(fn):
     @wraps(fn)
     def wrapper(root, info, *args, **kwargs):
         request = info.context
-        phone = kwargs.get("username", None)
-        verified_phone(request, phone)
+        phone = kwargs.get("phone", None)
+        has_verified_phone(request, phone)
         return fn(root, info, *args, **kwargs)
 
     return wrapper
@@ -76,7 +64,7 @@ class VerifyCode(graphene.Mutation):
         verify_code(request, phone, code)
 
         try:
-            verified_phone(request, phone, code)
+            has_verified_phone(request, phone, code)
         except exceptions.InvalidPhone as e:
             return Result(success=False, message=e.message)
         except exceptions.WrongVerifyCode as e:
@@ -87,8 +75,8 @@ class VerifyCode(graphene.Mutation):
 
 class SignIn(graphql_jwt.JSONWebTokenMutation):
     class Arguments:
-        phone = graphene.String(required=True)
-        code = graphene.String(required=True)
+        phone = graphene.String(required=False)
+        openid = graphene.String(required=False)
 
     me = graphene.Field(Me)
     token = graphene.String()
@@ -98,30 +86,50 @@ class SignIn(graphql_jwt.JSONWebTokenMutation):
         return cls(me=info.context.user.shop_user)
 
     @classmethod
+    @require_verified_phone
     @token_auth
     def mutate(cls, root, info, **kwargs):
 
-        request = info.context
+        # request = info.context
         phone = kwargs.get("phone")
-        verify_code(request, phone, code)
+        # openid = kwargs.get("openid")
 
+        # TODO: login with openid
         # copy phone to username for token_auth
         kwargs["username"] = phone
         return cls.resolve(root, info, **kwargs)
 
 
+class BindOpenId(graphene.Mutation):
+    class Arguments:
+        # TODO: sign up with phone or wechat, alipay
+        bind_type = graphene.Field(LoginProvider, required=True)
+        openid = graphene.String(required=True)
+
+    Output = Result
+
+    @require_verified_phone
+    def mutate(self, info, bind_type, openid, **kw):
+        shop_user = info.request.user.shop_user
+        try:
+            shop_user.bind_openid(bind_type, openid)
+        except (exceptions.AlreadyBinded, exceptions.DoNotSupportBindType) as e:
+            raise exceptions.GQLError(e.message)
+
+        # TODO: recheck openid with thirdparty server
+
+        return Result(success=True)
+
+
 class SignUp(graphene.Mutation):
-    # TODO: sign up with phone or wechat, alipay
     class Arguments:
         phone = graphene.String(required=True)
-        # wechat, alipay
-        bind_type = graphene.String(required=True)
 
     me = graphene.Field(Me)
     token = graphene.String()
     refresh_token = graphene.String()
 
-    # @require_verify_phone
+    @require_verified_phone
     def mutate(self, info, phone):
         try:
             phone = parse_phone(phone)

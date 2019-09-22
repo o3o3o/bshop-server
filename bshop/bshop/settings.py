@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from os import getenv
+
+RUN_IN_DOCKER = getenv("IN_DOCKER") == "YES"
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -118,7 +121,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 STATIC_URL = "/static/"
-if os.getenv("IN_DOCKER", None) == "YES":
+if RUN_IN_DOCKER:
     REDIS_HOST = os.environ["REDIS_HOST"] if "REDIS_HOST" in os.environ else "redis"
     STATIC_ROOT = "/data/static"
 else:
@@ -142,3 +145,29 @@ AUTHENTICATION_BACKENDS = [
     "user_center.auth.ShopUserAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+
+# SMS settings
+SMS_BACKEND_CONSOLE = "smsish.sms.backends.console.SMSBackend"
+SMS_BACKEND_DUMMY = "smsish.sms.backends.dummy.SMSBackend"
+SMS_BACKEND_TWILIO = "smsish.sms.backends.twilio.SMSBackend"
+
+ENABLE_SMS = getenv("ENABLE_SMS") == "true"
+
+if ENABLE_SMS:
+    SMS_BACKEND = SMS_BACKEND_TWILIO
+else:
+    SMS_BACKEND = SMS_BACKEND_CONSOLE
+
+TWILIO_ACCOUNT_SID = getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = getenv("TWILIO_AUTH_TOKEN")
+TWILIO_MAGIC_FROM_NUMBER = "+15005550006"  # This number passes all validation.
+TWILIO_FROM_NUMBER = getenv("TWILIO_FROM_NUMBER", TWILIO_MAGIC_FROM_NUMBER)
+
+
+# TODO: local settings for for dev
+try:
+    from .local_settings import *  # noqa F401
+except ImportError as e:
+    print(e)
+    pass

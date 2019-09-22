@@ -1,7 +1,6 @@
 from requests.exceptions import RequestException
-from ccxt.base.errors import RequestTimeout, ExchangeError
 
-RETRY_EXCEPTIONS = (RequestException, RequestTimeout, ExchangeError)
+RETRY_EXCEPTIONS = (RequestException,)
 
 
 class ErrorResultException(Exception):
@@ -51,3 +50,11 @@ class NeedVerifyPhone(ErrorResultException):
 
 class WrongVerifyCode(ErrorResultException):
     default_message = "wrong_verification_code"
+
+
+class AlreadyBinded(ErrorResultException):
+    default_message = "alread_binded_need_unbind_bind"
+
+
+class DoNotSupportBindType(ErrorResultException):
+    default_message = "do_not_support_bind_type"
