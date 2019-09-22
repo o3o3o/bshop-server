@@ -2,6 +2,7 @@ from django.db import models
 from django.db import transaction
 from django.contrib.auth.models import User
 
+from user_center.provider import get_provider_field, get_open_id
 from common.base_models import BaseModel, ModelWithExtraInfo
 from common import exceptions
 
@@ -13,16 +14,24 @@ class ShopUserManager(models.Manager):
         shop_user = self.create(phone=phone, user=user)
         return shop_user
 
+    def get_user_by_auth_code(self, provider, auth_code):
+        field = get_provider_field(provider)
+        openid = get_open_id(provider, auth_code)
+        kw = {field: openid}
+        shop_user = self.get(**kw)
+        return shop_user
+
 
 class ShopUser(BaseModel, ModelWithExtraInfo):
+
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="shop_user"
     )
     phone = models.CharField(max_length=32, null=True, blank=True)
     nickname = models.CharField(max_length=128, null=True, blank=True, unique=True)
     avatar_url = models.CharField(max_length=512, null=True, blank=True)
-    wechat_id = models.CharField(max_length=512, null=True, blank=True)
-    alipay_id = models.CharField(max_length=512, null=True, blank=True)
+    wechat_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
+    alipay_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
 
     objects = ShopUserManager()
 
@@ -59,17 +68,10 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
         self.avatar_url = value
         self.save(update_fields=["avatar_url"])
 
-    def bind_openid(self, open_id, login_provider):
-        from common.schema import LoginProvider
+    def bind_third_account(self, provider, auth_code):
 
-        bind_map = {
-            LoginProvider.WECHAT: "wechat_id",
-            LoginProvider.ALIPAY: "alipay_id",
-        }
-        if login_provider not in bind_map:
-            raise exceptions.DoNotSupportBindType
-
-        field = bind_map[login_provider]
+        field = get_provider_field(provider)
+        openid = get_open_id(provider, auth_code)
 
         val = getattr(self, field)
         if val:

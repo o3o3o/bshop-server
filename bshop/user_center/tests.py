@@ -38,7 +38,7 @@ class UserTests(TestCase):
         self.shop_user2 = ShopUserFactory()
 
         self.user = self.shop_user.user
-        self.user2 = self.shop_user.user2
+        self.user2 = self.shop_user2.user
 
         self.client = MYJSONWebTokenClient()
 
@@ -55,20 +55,21 @@ class UserTests(TestCase):
     )
     def test_sign_up(self, mock_random_code):
         mock_random_code.return_value = "123456"
-        phone = self.shop_user.phone
+        phone = "+8613912345678"
+
         gql_signup = """
-        mutation signup($username: String!, $password: String!) {
-          signUp(username: $username, password: $password, code: "") {
+        mutation signin($username: String!) {
+          signUp(username: $username) {
               token
               me{
                   id
                   username
-                  nickname
+                  phone
              }
           }
         }
         """
-        variables_signup = {"username": phone, "password": "newuser.pwd"}
+        variables_signup = {"username": phone}
         data = self.client.execute(gql_signup, variables_signup)
         self.assertIsNotNone(data.errors)
         # TODO: assert error msg
@@ -87,6 +88,46 @@ class UserTests(TestCase):
             data.data["requestVerificationCode"]["message"], "invalid_phone"
         )
 
+        self.verify_phone(phone)
+
+        data = self.client.execute(gql_signup, variables_signup)
+        self.assertIsNone(data.errors)
+        self.assertEquals(data.data["signUp"]["me"]["username"], phone)
+        self.assertIsNotNone(data.data["signUp"]["token"])
+        self.assertEquals(data.data["signUp"]["me"]["phone"], phone)
+
+        gql_bind_account = """
+        mutation bc($provider: LoginProvider!, authCode: String!) {
+          bindThirdAccount(provider: $provider, authCode: $authCode) {
+                success
+                message
+               }
+        }
+
+        """
+        variables_bind_account = {"provider": "WECHAT", "authCode": "test_auth_code"}
+        with patch("user_center.provider.wechat_get_open_id") as mock_get_open_id:
+            mock_get_open_id.return_value = "test_open_id"
+            data = self.client.execute(gql_bind_account, variables_bind_account)
+            self.assertIsNone(data.errors)
+            self.assertEquals(data.data["bindThirdAccount"]["success"], True)
+
+            mock_get_open_id.assert_called()
+
+            user = get_user_model().objects.get(username=phone)
+            self.assertEquals(user.shop_user.wechat_id, "test_open_id")
+
+            user.delete()
+
+    def verify_phone(self, phone):
+        gql_request_verify_code = """
+        mutation rvc($phone: String!) {
+          requestVerificationCode(phone: $phone) {
+                success
+                message
+               }
+        }
+        """
         data = self.client.execute(gql_request_verify_code, {"phone": phone})
         self.assertIsNone(data.errors)
         self.assertEquals(data.data["requestVerificationCode"]["success"], True)
@@ -100,7 +141,7 @@ class UserTests(TestCase):
         }
         """
 
-        variables = {"phone": phone, "code": "123457"}
+        variables = {"phone": phone, "code": "123456"}
         data = self.client.execute(gql_verify_code, variables)
         self.assertEquals(data.data["verifyCode"]["success"], False)
         self.assertEquals(data.data["verifyCode"]["message"], "wrong_verification_code")
@@ -110,19 +151,16 @@ class UserTests(TestCase):
         self.assertIsNone(data.errors)
         self.assertEquals(data.data["verifyCode"]["success"], True)
 
-        variables_signup = {"username": phone, "password": "newuser.pwd"}
-        data = self.client.execute(gql_signup, variables_signup)
-        self.assertIsNone(data.errors)
-        self.assertEquals(data.data["signUp"]["me"]["username"], phone)
-        self.assertIsNotNone(data.data["signUp"]["token"])
-        self.assertEquals(data.data["signUp"]["me"]["nickname"], phone)
+    @patch("user_center.auth.get_random_code")
+    @override_settings(
+        SMS_BACKEND="smsish.sms.backends.dummy.SMSBackend", RATELIMIT_ENABLE=False
+    )
+    def test_sign_in(self, mock_random_code):
+        phone = self.shop_user.phone
+        mock_random_code.return_value = "123456"
 
-        user = get_user_model().objects.get(username=phone)
-        user.delete()
-
-    def test_sign_in(self):
         gql = """
-        mutation sigin($username: String!, $password: String!) {
+mutation sigin($username: String!, $openid: String!, $provider: LoginProvider!) {
           signIn(username: $username, password: $password) {
               token
               refreshToken
@@ -130,23 +168,17 @@ class UserTests(TestCase):
         }
         """
 
-        variables = {"username": "+8618612345678", "password": "wrong.pwd"}
+        # test sigin with phone, no sms code verified
+        variables = {"username": phone}
         data = self.client.execute(gql, variables)
-
         self.assertIsNotNone(data.errors)
 
-        variables = {"username": "+8618612345678", "password": "coin.pwd"}
+        self.verify_phone(phone)
+
+        variables = {"username": phone}
         data = self.client.execute(gql, variables)
         self.assertIsNone(data.errors)
         self.assertIsNotNone(data.data["signIn"]["token"])
-
-        variables = {"username": "+8618612345679", "password": "coin.pwd2"}
-        data = self.client.execute(gql, variables)
-        self.assertIsNone(data.errors)
-        self.assertIsNotNone(data.data["signIn"]["token"])
-
-        # token = data.data["signIn"]["token"]
-        # refresh_token = data.data["signIn"]["refreshToken"]
 
     def test_get_me(self):
         self.client.authenticate(self.user)

@@ -29,6 +29,7 @@ django-ipware = "*"
 django-graphql-ratelimit = "*"
 phonenumbers = "*"
 django-smsish2 = "==1.3.4"
+wechatpy = {extras = ["cryptography"],version = "*"}
 
 [requires]
 python_version = "3.7"

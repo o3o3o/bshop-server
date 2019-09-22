@@ -130,9 +130,22 @@ else:
 
 
 # Graphql Settings
+
+if getenv("HIDE_GQL_SCHEMA") == "true":
+    ProdGQLMiddleware = ["gql.middleware.HideIntrospectMiddleware"]
+else:
+    ProdGQLMiddleware = []
+
+if getenv("DEBUG_GQL") == "true":
+    DebugGQLMiddleware = ["graphene_django.debug.DjangoDebugMiddleware"]
+else:
+    DebugGQLMiddleware = []
+
 GRAPHENE = {
-    "SCHEMA": "bshop.myschema.schema",
-    "MIDDLEWARE": ["graphql_jwt.middleware.JSONWebTokenMiddleware"],
+    "SCHEMA": "gql.schema.schema",
+    "MIDDLEWARE": ["graphql_jwt.middleware.JSONWebTokenMiddleware"]
+    + ProdGQLMiddleware
+    + DebugGQLMiddleware,
 }
 GRAPHQL_JWT = {
     "JWT_VERIFY_EXPIRATION": True,
@@ -140,6 +153,7 @@ GRAPHQL_JWT = {
     "JWT_REFRESH_EXPIRED_HANDLER": lambda orig_iat, context: False,
     "JWT_AUTH_TOKEN_WITH_PASSWORD": False,
 }
+
 AUTHENTICATION_BACKENDS = [
     "graphql_jwt.backends.JSONWebTokenBackend",
     "user_center.auth.ShopUserAuthBackend",
@@ -163,6 +177,12 @@ TWILIO_ACCOUNT_SID = getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = getenv("TWILIO_AUTH_TOKEN")
 TWILIO_MAGIC_FROM_NUMBER = "+15005550006"  # This number passes all validation.
 TWILIO_FROM_NUMBER = getenv("TWILIO_FROM_NUMBER", TWILIO_MAGIC_FROM_NUMBER)
+
+
+# Wechat settings
+
+WECHAT_APP_ID = getenv("WECHAT_APP_ID")
+WECHAT_APP_SECRET = getenv("WECHAT_APP_SECRET")
 
 
 # TODO: local settings for for dev

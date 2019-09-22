@@ -61,10 +61,8 @@ class VerifyCode(graphene.Mutation):
     def mutate(self, info, phone, code):
         request = info.context
 
-        verify_code(request, phone, code)
-
         try:
-            has_verified_phone(request, phone, code)
+            verify_code(request, phone, code)
         except exceptions.InvalidPhone as e:
             return Result(success=False, message=e.message)
         except exceptions.WrongVerifyCode as e:
@@ -75,8 +73,9 @@ class VerifyCode(graphene.Mutation):
 
 class SignIn(graphql_jwt.JSONWebTokenMutation):
     class Arguments:
-        phone = graphene.String(required=False)
-        openid = graphene.String(required=False)
+        phone = graphene.String()
+        auth_code = graphene.String()
+        provider = graphene.Argument(LoginProvider)
 
     me = graphene.Field(Me)
     token = graphene.String()
@@ -88,37 +87,28 @@ class SignIn(graphql_jwt.JSONWebTokenMutation):
     @classmethod
     @require_verified_phone
     @token_auth
-    def mutate(cls, root, info, **kwargs):
+    def mutate(cls, root, info, phone=None, auth_code=None, provider=None):
 
-        # request = info.context
-        phone = kwargs.get("phone")
-        # openid = kwargs.get("openid")
+        request = info.context
 
-        # TODO: login with openid
+        if phone:
+            try:
+                has_verified_phone(request, phone)
+            except exceptions.InvalidPhone as e:
+                return Result(success=False, message=e.message)
+            except exceptions.WrongVerifyCode as e:
+                return Result(success=False, message=e.message)
+        elif auth_code and provider:
+            try:
+                shop_user = ShopUser.objects.get_user_by_auth_code(
+                    provider.value, auth_code
+                )
+            except ShopUser.DoesNotExist:
+                return Result(success=False, message="not_exist_user_with_auth_code")
+
         # copy phone to username for token_auth
         kwargs["username"] = phone
         return cls.resolve(root, info, **kwargs)
-
-
-class BindOpenId(graphene.Mutation):
-    class Arguments:
-        # TODO: sign up with phone or wechat, alipay
-        bind_type = graphene.Field(LoginProvider, required=True)
-        openid = graphene.String(required=True)
-
-    Output = Result
-
-    @require_verified_phone
-    def mutate(self, info, bind_type, openid, **kw):
-        shop_user = info.request.user.shop_user
-        try:
-            shop_user.bind_openid(bind_type, openid)
-        except (exceptions.AlreadyBinded, exceptions.DoNotSupportBindType) as e:
-            raise exceptions.GQLError(e.message)
-
-        # TODO: recheck openid with thirdparty server
-
-        return Result(success=True)
 
 
 class SignUp(graphene.Mutation):
@@ -137,10 +127,31 @@ class SignUp(graphene.Mutation):
             raise exceptions.GQLError(e.message)
 
         try:
-            ShopUser.objects.get(phone=phone)
-            raise exceptions.GQLError("user_already_exists")
+            shop_user = ShopUser.objects.get(phone=phone)
         except ShopUser.DoesNotExist:
             shop_user = ShopUser.objects.create_user(phone=phone)
-            token = get_token(shop_user.user)
-            refresh_token = create_refresh_token(shop_user.user)
-            return SignUp(me=shop_user, token=token, refresh_token=refresh_token)
+
+        token = get_token(shop_user.user)
+        refresh_token = create_refresh_token(shop_user.user)
+        return SignUp(me=shop_user, token=token, refresh_token=refresh_token)
+
+
+class BindThirdAccount(graphene.Mutation):
+    class Arguments:
+        # TODO: sign up with phone or wechat, alipay
+        provider = graphene.Argument(LoginProvider)
+        auth_code = graphene.String(required=True)
+
+    Output = Result
+
+    @require_verified_phone
+    def mutate(self, info, provider, auth_code, **kw):
+        shop_user = info.request.user.shop_user
+        try:
+            shop_user.bind_third_account(provider.value, auth_code)
+        except (exceptions.AlreadyBinded, exceptions.DoNotSupportBindType) as e:
+            raise exceptions.GQLError(e.message)
+
+        # TODO: recheck auth_code with thirdparty server
+
+        return Result(success=True)
