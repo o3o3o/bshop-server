@@ -6,7 +6,13 @@ from common import exceptions
 from common.phone import parse_phone
 from common.ratelimit import ratelimit
 from user_center.models import ShopUser
-from user_center.schema.auth import SignIn, SignUp, RequestVerificationCode, VerifyCode
+from user_center.schema.auth import (
+    SignIn,
+    SignUp,
+    RequestVerificationCode,
+    VerifyCode,
+    BindThirdAccount,
+)
 from user_center.schema.user import Me, UpdateUserInfo
 
 
@@ -39,9 +45,10 @@ class Query(graphene.ObjectType):
 class Mutation(graphene.ObjectType):
     request_verification_code = RequestVerificationCode.Field()
     verify_code = VerifyCode.Field()
+    bind_third_account = BindThirdAccount.Field()
     sign_in = SignIn.Field()
     sign_up = SignUp.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
 
-    update_user_info = UpdateUserInfo.Field()
+    # update_user_info = UpdateUserInfo.Field()

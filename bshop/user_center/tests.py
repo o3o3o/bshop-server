@@ -58,18 +58,17 @@ class UserTests(TestCase):
         phone = "+8613912345678"
 
         gql_signup = """
-        mutation signin($username: String!) {
-          signUp(username: $username) {
+        mutation signin($phone: String!) {
+          signUp(phone: $phone) {
               token
               me{
                   id
-                  username
                   phone
              }
           }
         }
         """
-        variables_signup = {"username": phone}
+        variables_signup = {"phone": phone}
         data = self.client.execute(gql_signup, variables_signup)
         self.assertIsNotNone(data.errors)
         # TODO: assert error msg
@@ -92,13 +91,12 @@ class UserTests(TestCase):
 
         data = self.client.execute(gql_signup, variables_signup)
         self.assertIsNone(data.errors)
-        self.assertEquals(data.data["signUp"]["me"]["username"], phone)
-        self.assertIsNotNone(data.data["signUp"]["token"])
         self.assertEquals(data.data["signUp"]["me"]["phone"], phone)
+        self.assertIsNotNone(data.data["signUp"]["token"])
 
         gql_bind_account = """
-        mutation bc($provider: LoginProvider!, authCode: String!) {
-          bindThirdAccount(provider: $provider, authCode: $authCode) {
+        mutation bc($provider: LoginProvider!, $authCode: String!) {
+          bindThirdAccount($provider: $provider, authCode: $authCode) {
                 success
                 message
                }
@@ -141,7 +139,7 @@ class UserTests(TestCase):
         }
         """
 
-        variables = {"phone": phone, "code": "123456"}
+        variables = {"phone": phone, "code": "123457"}
         data = self.client.execute(gql_verify_code, variables)
         self.assertEquals(data.data["verifyCode"]["success"], False)
         self.assertEquals(data.data["verifyCode"]["message"], "wrong_verification_code")
@@ -160,25 +158,26 @@ class UserTests(TestCase):
         mock_random_code.return_value = "123456"
 
         gql = """
-mutation sigin($username: String!, $openid: String!, $provider: LoginProvider!) {
-          signIn(username: $username, password: $password) {
+        mutation sigin($phone: String, $auth_code: String, $provider: LoginProvider) {
+          signIn(phone: $phone) {
               token
-              refreshToken
           }
         }
         """
 
         # test sigin with phone, no sms code verified
-        variables = {"username": phone}
+        variables = {"phone": phone}
         data = self.client.execute(gql, variables)
         self.assertIsNotNone(data.errors)
 
         self.verify_phone(phone)
 
-        variables = {"username": phone}
+        variables = {"phone": phone}
         data = self.client.execute(gql, variables)
         self.assertIsNone(data.errors)
         self.assertIsNotNone(data.data["signIn"]["token"])
+
+        # TODO: signin with auth_code
 
     def test_get_me(self):
         self.client.authenticate(self.user)
@@ -186,10 +185,10 @@ mutation sigin($username: String!, $openid: String!, $provider: LoginProvider!) 
         query {
           me {
             id
-            username
+            phone
           }
         }"""
 
         data = self.client.execute(gql)
         self.assertEquals(data.errors, None)
-        self.assertEquals(data.data["me"]["username"], "+8618612345678")
+        self.assertEquals(data.data["me"]["phone"], self.user.shop_user.phone)

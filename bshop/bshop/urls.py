@@ -15,7 +15,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.conf import settings
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
+from gql.views import graphql_view
+
+# NOTE: admin_url must starts with 'admin' for setting admin timezone
+admin_url = "admin" + settings.SUB_ADMIN_URL + "/"
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-]
+    path(admin_url, admin.site.urls),
+    path("api/gql", graphql_view),
+] + staticfiles_urlpatterns()

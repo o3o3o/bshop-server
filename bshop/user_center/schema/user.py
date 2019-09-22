@@ -63,9 +63,6 @@ class UpdateUserInfo(graphene.Mutation):
     def mutate(self, info, params):
         shop_user = info.context.user.shop_user
         for k, v in params.items():
-            if k == "nickname":
-                if ShopUser.objects.filter(_nickname=v).exists():
-                    return Result(success=False, message="nickname_already_exists")
-
             setattr(shop_user, k, v)
+            shop_user.save(update_fields=[k])
         return Result(success=True, message="")

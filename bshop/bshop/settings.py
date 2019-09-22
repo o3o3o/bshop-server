@@ -11,7 +11,13 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+import sys
 from os import getenv
+
+# import environ
+# env = environ.Env(DEBUG=(bool, False))
+## reading .env file
+# environ.Env.read_env()
 
 RUN_IN_DOCKER = getenv("IN_DOCKER") == "YES"
 
@@ -23,12 +29,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "#5!23i=@=21j(7uytn&z07e$z--h@@m8ws*(ioyjz8_rgtfv3#"
+SECRET_KEY = getenv(
+    "DJANOG_SECRET_KEY", "#5!23i=@=21j(7uytn&z07e$z--h@@m8ws*(ioyjz8_rgtfv3#"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = getenv("DJANGO_DEBUG", False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = (
+    getenv("ALLOWED_HOSTS", "localhost, 127.0.0.1").replace(" ", "").split(",")
+)
 
 
 # Application definition
@@ -40,6 +50,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_extensions",
+    "django_nose",
+    "graphene_django",
+    "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
+    "ratelimit",
+    "smsish",
     "common",
     "user_center",
     "wallet",
@@ -117,6 +133,32 @@ USE_L10N = True
 
 USE_TZ = True
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "%(asctime)s %(name)s [%(levelname)s] %(message)s"}
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "stream": sys.stdout,
+        }
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": getenv("DJANGO_LOG_LEVEL", "INFO"),
+        },
+        "factory": {"level": "ERROR"},
+        "faker": {"level": "ERROR"},
+    },
+}
+
+# Avoid to be guessed the admin url by pentester
+SUB_ADMIN_URL = getenv("SUB_ADMIN_URL", "")
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
@@ -130,6 +172,8 @@ else:
 
 
 # Graphql Settings
+
+SHOW_GRAPHQL_DOC = getenv("SHOW_GRAPHQL_DOC", False)
 
 if getenv("HIDE_GQL_SCHEMA") == "true":
     ProdGQLMiddleware = ["gql.middleware.HideIntrospectMiddleware"]
@@ -147,6 +191,7 @@ GRAPHENE = {
     + ProdGQLMiddleware
     + DebugGQLMiddleware,
 }
+
 GRAPHQL_JWT = {
     "JWT_VERIFY_EXPIRATION": True,
     "JWT_LONG_RUNNING_REFRESH_TOKEN": True,
@@ -160,6 +205,16 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
+
+# Test settings
+TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
+
+if getenv("DISABLE_COVERAGE") != "true":
+    NOSE_ARGS = [
+        "--with-coverage",
+        "--cover-package=gql,wallet,user_center",
+        "--cover-min-percentage=60",
+    ]
 
 # SMS settings
 SMS_BACKEND_CONSOLE = "smsish.sms.backends.console.SMSBackend"
