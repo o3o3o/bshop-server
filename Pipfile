@@ -13,7 +13,7 @@ django = "*"
 whitenoise = "*"
 django-redis = "*"
 fakeredis = "*"
-django-graphql-jwt = "*"
+django-graphql-jwt = {editable = true,git = "https://github.com/o3o3o/django-graphql-jwt.git"}
 django-nose = "*"
 flower = "*"
 twilio = "*"

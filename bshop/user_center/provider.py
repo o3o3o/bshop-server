@@ -1,3 +1,4 @@
+import logging
 import requests
 from django.conf import settings
 
@@ -6,7 +7,10 @@ from django.conf import settings
 # from wechatpy.session.redisstorage import RedisStorage
 
 from common.schema import LoginProvider
+from common import exceptions
 
+
+logger = logging.getLogger(__name__)
 # redis_client = Redis.from_url("redis://%s:6379/0" % settings.REDIS_HOST)
 #
 # session_interface = RedisStorage(redis_client, prefix="wechatpy")
@@ -26,13 +30,13 @@ def wechat_get_open_id(auth_code):
     }
     res = requests.get(
         "https://api.weixin.qq.com/sns/jscode2session",
-        params=req_params,
+        params=params,
         timeout=3,
         verify=False,
     )
     d = res.json()
     if d["errcode"] != 0:
-        logger.error(f"wechat code2openid error, {d}")
+        logger.exception(f"wechat code2openid error, {d}")
 
     return res["openid"]
 

@@ -13,7 +13,7 @@ from user_center.schema.auth import (
     VerifyCode,
     BindThirdAccount,
 )
-from user_center.schema.user import Me, UpdateUserInfo
+from user_center.schema.user import Me  # , UpdateUserInfo
 
 
 class Query(graphene.ObjectType):

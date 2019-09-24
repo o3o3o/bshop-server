@@ -75,8 +75,8 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
 
         val = getattr(self, field)
         if val:
-            if val != open_id:
+            if val != openid:
                 raise exceptions.AlreadyBinded
         else:
-            setattr(self, field, open_id)
-            self.update_fields([field])
+            setattr(self, field, openid)
+            self.save(update_fields=[field])

@@ -1,6 +1,7 @@
 import logging
 import graphene
 import graphql_jwt
+from graphql_jwt.decorators import login_required
 
 from functools import wraps
 from graphql_jwt.decorators import token_auth
@@ -21,7 +22,9 @@ def require_verified_phone(fn):
     @wraps(fn)
     def wrapper(root, info, *args, **kwargs):
         request = info.context
-        phone = kwargs.get("phone", None)
+        phone = kwargs.get("username", kwargs.get("phone"))
+        if phone is None:
+            raise ValueError("Cannot get phone number")
         has_verified_phone(request, phone)
         return fn(root, info, *args, **kwargs)
 
@@ -58,6 +61,8 @@ class VerifyCode(graphene.Mutation):
 
     Output = Result
 
+    @ratelimit(key="ip", rate="10/m", block=True)
+    @ratelimit(key="gql:phone", rate="5/m", block=True)
     def mutate(self, info, phone, code):
         request = info.context
 
@@ -73,7 +78,7 @@ class VerifyCode(graphene.Mutation):
 
 class SignIn(graphql_jwt.JSONWebTokenMutation):
     class Arguments:
-        phone = graphene.String()
+        username = graphene.String(description="phone number")
         auth_code = graphene.String()
         provider = graphene.Argument(LoginProvider)
 
@@ -85,11 +90,14 @@ class SignIn(graphql_jwt.JSONWebTokenMutation):
         return cls(me=info.context.user.shop_user)
 
     @classmethod
-    @require_verified_phone
     @token_auth
-    def mutate(cls, root, info, phone=None, auth_code=None, provider=None):
+    def mutate(cls, root, info, **kwargs):
 
         request = info.context
+
+        phone = kwargs.get("username")
+        auth_code = kwargs.get("auth_code")
+        provider = kwargs.get("provider")
 
         if phone:
             try:
@@ -98,6 +106,12 @@ class SignIn(graphql_jwt.JSONWebTokenMutation):
                 return Result(success=False, message=e.message)
             except exceptions.WrongVerifyCode as e:
                 return Result(success=False, message=e.message)
+
+            try:
+                shop_user = ShopUser.objects.get(phone=phone)
+            except ShopUser.DoesNotExist:
+                return Result(success=False, message="not_exist_user_with_phone")
+
         elif auth_code and provider:
             try:
                 shop_user = ShopUser.objects.get_user_by_auth_code(
@@ -106,6 +120,7 @@ class SignIn(graphql_jwt.JSONWebTokenMutation):
             except ShopUser.DoesNotExist:
                 return Result(success=False, message="not_exist_user_with_auth_code")
 
+        request.user = shop_user.user
         # copy phone to username for token_auth
         kwargs["username"] = phone
         return cls.resolve(root, info, **kwargs)
@@ -144,14 +159,12 @@ class BindThirdAccount(graphene.Mutation):
 
     Output = Result
 
-    @require_verified_phone
+    @login_required
     def mutate(self, info, provider, auth_code, **kw):
-        shop_user = info.request.user.shop_user
+        shop_user = info.context.user.shop_user
         try:
-            shop_user.bind_third_account(provider.value, auth_code)
+            shop_user.bind_third_account(provider, auth_code)
         except (exceptions.AlreadyBinded, exceptions.DoNotSupportBindType) as e:
             raise exceptions.GQLError(e.message)
-
-        # TODO: recheck auth_code with thirdparty server
 
         return Result(success=True)

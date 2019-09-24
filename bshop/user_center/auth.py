@@ -80,7 +80,6 @@ def verify_code(request, phone, code):
 
 
 class ShopUserAuthBackend:
-    # TODO: require phone verify
     def authenticate(self, request, username=None, **kw):
         # has_verified_phone(request, phone=username)
 

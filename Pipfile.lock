@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "d8858a2ba8fb4bef5048dc285a235f442715cf1fd5e6506af19c658d4c533a9f"
+            "sha256": "3de2417c466a3a0dc94b778c502de7225291994de2ff8318f382dec65b1962e1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -152,12 +152,9 @@
             "version": "==0.1.1"
         },
         "django-graphql-jwt": {
-            "hashes": [
-                "sha256:688c1e6a69f9715471fc250521ca5675c71af3f1159a629089c20cb3db0e2ba7",
-                "sha256:a189459086e97f2ff49203e9041f1f3d4b2a9502f02571d4e0087cc91b2cecd7"
-            ],
-            "index": "pypi",
-            "version": "==0.2.2"
+            "editable": true,
+            "git": "https://github.com/o3o3o/django-graphql-jwt.git",
+            "ref": "d81aa6ca9c712a91a2c29351da8d18895bde87d4"
         },
         "django-graphql-ratelimit": {
             "hashes": [
@@ -245,11 +242,11 @@
         },
         "graphene-django": {
             "hashes": [
-                "sha256:25f2bdf41e30bc7b860c1c13bfb4ba5c3961712394f16e847d79a69fc25a06b1",
-                "sha256:d75b3e468d8d765d5964bc809e403b44bf7c37556c0464230a5083bccf14581b"
+                "sha256:0d1404ab1ba7873a8e848d87d138f615391d100ed0c046482c164429cfb992ef",
+                "sha256:fa9e815f63e3c972773adc96c3f3c81e537dba0edcd0f1be92c799bc0b6ed0a8"
             ],
             "index": "pypi",
-            "version": "==2.5.0"
+            "version": "==2.6.0"
         },
         "graphql-core": {
             "hashes": [
