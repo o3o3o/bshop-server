@@ -215,5 +215,28 @@ class UserTests(TestCase):
         }"""
 
         data = self.client.execute(gql)
-        self.assertEquals(data.errors, None)
+        self.assertIsNone(data.errors)
         self.assertEquals(data.data["me"]["phone"], self.user.shop_user.phone)
+
+    def test_update_userinfo(self):
+        self.client.authenticate(self.user)
+        gql = """
+            mutation test($input: UpdateUserInfoInput!){
+                updateUserInfo(input: $input){
+                    success
+                    message
+                }
+            }
+        """
+        variables = {
+            "input": {"nickname": "test_nickname", "avatarUrl": "test_avatar_url"}
+        }
+        data = self.client.execute(gql, variables)
+        self.assertIsNone(data.errors)
+        self.assertEquals(data.data["updateUserInfo"]["success"], True)
+
+        self.user.refresh_from_db()
+        self.user.shop_user.refresh_from_db()
+
+        self.assertEquals(self.user.shop_user.nickname, "test_nickname")
+        self.assertEquals(self.user.shop_user.avatar_url, "test_avatar_url")

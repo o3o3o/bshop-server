@@ -13,7 +13,7 @@ from user_center.schema.auth import (
     VerifyCode,
     BindThirdAccount,
 )
-from user_center.schema.user import Me  # , UpdateUserInfo
+from user_center.schema.user import Me, UpdateUserInfo
 
 
 class Query(graphene.ObjectType):
@@ -51,4 +51,4 @@ class Mutation(graphene.ObjectType):
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
 
-    # update_user_info = UpdateUserInfo.Field()
+    update_user_info = UpdateUserInfo.Field()

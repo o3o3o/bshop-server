@@ -50,6 +50,7 @@ class Me(BaseUserQL, DjangoObjectType):
 
 class UpdateUserInfoInput(graphene.InputObjectType):
     nickname = graphene.String(default_value=None)
+    avatar_url = graphene.String(default_value=None)
     # avatar = Upload(default_value=None)
 
 
