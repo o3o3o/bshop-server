@@ -11,6 +11,7 @@ from common import exceptions
 
 
 logger = logging.getLogger(__name__)
+
 # redis_client = Redis.from_url("redis://%s:6379/0" % settings.REDIS_HOST)
 #
 # session_interface = RedisStorage(redis_client, prefix="wechatpy")
@@ -35,10 +36,16 @@ def wechat_get_open_id(auth_code):
         verify=False,
     )
     d = res.json()
-    if d["errcode"] != 0:
+    logger.debug(f"wechat open id: {d}")
+    if d.get("errcode", 0) != 0:
         logger.exception(f"wechat code2openid error, {d}")
-
-    return res["openid"]
+        if d.get("errcode") == 40163:
+            # code been used
+            raise exceptions.CodeBeUsed
+    elif "openid" in d:
+        return d["openid"]
+    else:
+        logger.exception(f"wechat failed to get openid: {d}")
 
 
 def alipay_get_open_id(auth_code):

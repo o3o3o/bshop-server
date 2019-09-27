@@ -2,7 +2,7 @@ import time
 import random
 import logging
 
-# from django.conf import settings
+from django.conf import settings
 from django.contrib.auth.models import User
 
 from common import exceptions
@@ -32,6 +32,8 @@ MAX_RETRY_VERIFY = 5
 
 
 def get_random_code():
+    if settings.DEBUG:
+        return "123456"
     return "".join(["%s" % random.randint(0, 9) for num in range(0, 6)])
 
 

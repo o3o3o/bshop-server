@@ -123,6 +123,26 @@ class UserTests(TestCase):
             user = get_user_model().objects.get(username=phone)
             self.assertEquals(user.shop_user.wechat_id, "test_open_id")
 
+            # signIn with auth_code
+
+            gql = """
+            mutation signin($phone: String, $authCode: String, $provider: LoginProvider) {
+              signIn(phone: $phone, authCode: $authCode, provider: $provider) {
+                  token
+                  me{
+                    phone
+                    id
+                  }
+              }
+            }
+            """
+            variables = {"phone": None, "authCode": "1234", "provider": "WECHAT"}
+            data = self.client.execute(gql, variables)
+            self.assertIsNone(data.errors)
+            self.assertIsNotNone(data.data["signIn"]["token"])
+            self.assertEquals(data.data["signIn"]["me"]["phone"], phone)
+            self.assertEquals(data.data["signIn"]["me"]["id"], str(user.shop_user.uuid))
+
             user.delete()
 
     def verify_phone(self, phone):
@@ -167,14 +187,14 @@ class UserTests(TestCase):
 
         gql = """
         mutation signin($phone: String, $authCode: String, $provider: LoginProvider) {
-          signIn(username: $phone, authCode: $authCode, provider: $provider) {
+          signIn(phone: $phone, authCode: $authCode, provider: $provider) {
               token
           }
         }
         """
 
         # test sigin with phone, no sms code verified
-        variables = {"phone": phone, "authCode": "", "provider": "WECHAT"}
+        variables = {"phone": phone, "authCode": None, "provider": None}
         data = self.client.execute(gql, variables)
         self.assertIsNotNone(data.errors)
 
@@ -183,8 +203,6 @@ class UserTests(TestCase):
         data = self.client.execute(gql, variables)
         self.assertIsNone(data.errors)
         self.assertIsNotNone(data.data["signIn"]["token"])
-
-        # TODO: signin with auth_code
 
     def test_get_me(self):
         self.client.authenticate(self.user)

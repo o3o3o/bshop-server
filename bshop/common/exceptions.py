@@ -58,3 +58,7 @@ class AlreadyBinded(ErrorResultException):
 
 class DoNotSupportBindType(ErrorResultException):
     default_message = "do_not_support_bind_type"
+
+
+class CodeBeUsed(ErrorResultException):
+    default_message = "code_been_used"

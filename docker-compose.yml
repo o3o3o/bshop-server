@@ -29,9 +29,9 @@ services:
       - "127.0.0.1:5432:5432"
     restart: always
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres} # Set POSTGRES_USER in .env for prod
+      - POSTGRES_USER=${POSTGRES_USER:-bshop} # Set POSTGRES_USER in .env for prod
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password} # Set POSTGRES_PASSWORD in .env for prod
-      - POSTGRES_DB=shopdb
+      - POSTGRES_DB=bshopdb
 
   web:
     build: .

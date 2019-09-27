@@ -98,12 +98,24 @@ WSGI_APPLICATION = "bshop.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
+if RUN_IN_DOCKER:
+    DB_HOST = getenv("DB_HOST", "db")
+else:
+    DB_HOST = "localhost"
 
 DATABASES = {
     "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": getenv("DB_NAME", "bshopdb"),
+        "USER": getenv("DB_USER", "bshop"),
+        "PASSWORD": getenv("DB_PASS", "password"),
+        "HOST": DB_HOST,
+        "PORT": "5432",
+    },
+    "test": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-    }
+    },
 }
 
 
@@ -201,7 +213,7 @@ GRAPHQL_JWT = {
 
 AUTHENTICATION_BACKENDS = [
     "graphql_jwt.backends.JSONWebTokenBackend",
-    "user_center.auth.ShopUserAuthBackend",
+    # "user_center.auth.ShopUserAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
