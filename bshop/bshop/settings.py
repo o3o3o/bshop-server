@@ -250,6 +250,8 @@ SMS_BACKEND_CONSOLE = "smsish.sms.backends.console.SMSBackend"
 SMS_BACKEND_DUMMY = "smsish.sms.backends.dummy.SMSBackend"
 SMS_BACKEND_TWILIO = "smsish.sms.backends.twilio.SMSBackend"
 
+TEST_SMS_ALL = getenv("TEST_SMS_ALL") == "true"
+
 ENABLE_SMS = getenv("ENABLE_SMS") == "true"
 
 if ENABLE_SMS:

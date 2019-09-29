@@ -32,7 +32,7 @@ MAX_RETRY_VERIFY = 5
 
 
 def get_random_code():
-    if settings.DEBUG:
+    if settings.TEST_SMS_ALL:
         return "123456"
     return "".join(["%s" % random.randint(0, 9) for num in range(0, 6)])
 
