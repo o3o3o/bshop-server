@@ -111,11 +111,7 @@ DATABASES = {
         "PASSWORD": getenv("DB_PASS", "password"),
         "HOST": DB_HOST,
         "PORT": "5432",
-    },
-    "test": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-    },
+    }
 }
 
 
@@ -181,6 +177,21 @@ if RUN_IN_DOCKER:
 else:
     REDIS_HOST = "localhost"
     STATIC_ROOT = os.path.join(BASE_DIR, "static")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:6379/1",
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    },
+    "ratelimit": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:6379/2",
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    },
+}
+# The name of the cache (from the CACHES dict) to use for django-ratelimit
+RATELIMIT_USE_CACHE = "ratelimit"
 
 
 # Graphql Settings

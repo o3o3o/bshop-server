@@ -1,6 +1,7 @@
 import logging
 import requests
 from django.conf import settings
+from cache_fn.decorators import cache_fn
 
 # from redis import Redis
 # from wechatpy import WeChatClient
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 # )
 
 
+@cache_fn(timeout=604800)
 def wechat_get_open_id(auth_code):
     # TODO: https://wechatpy.readthedocs.io/zh_CN/master/client/wxa.html#wechatpy.client.api.WeChatWxa.code_to_session
     params = {
