@@ -193,6 +193,12 @@ CACHES = {
 # The name of the cache (from the CACHES dict) to use for django-ratelimit
 RATELIMIT_USE_CACHE = "ratelimit"
 
+# CELERY STUFF
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:6379/4"
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:6379/4"
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 
 # Graphql Settings
 
