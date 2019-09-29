@@ -13,7 +13,6 @@ django = "*"
 whitenoise = "*"
 django-redis = "*"
 fakeredis = "*"
-django-graphql-jwt = {editable = true,git = "https://github.com/o3o3o/django-graphql-jwt.git"}
 django-nose = "*"
 flower = "*"
 twilio = "*"
@@ -31,6 +30,7 @@ phonenumbers = "*"
 django-smsish2 = "==1.3.4"
 wechatpy = {extras = ["cryptography"],version = "*"}
 django-cache-fn = "*"
+django-graphql-jwt = "*"
 
 [requires]
 python_version = "3.7"

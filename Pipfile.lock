@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "91b8d317f0d7bb8cb04980d72528310cd6cb1bcb5da50a07491b864d24a5bc96"
+            "sha256": "30ead0c47f02ce1d91705ae08f017c9797bf9b1633a26d38d82784627f1baad6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -160,9 +160,12 @@
             "version": "==0.1.1"
         },
         "django-graphql-jwt": {
-            "editable": true,
-            "git": "https://github.com/o3o3o/django-graphql-jwt.git",
-            "ref": "d81aa6ca9c712a91a2c29351da8d18895bde87d4"
+            "hashes": [
+                "sha256:688c1e6a69f9715471fc250521ca5675c71af3f1159a629089c20cb3db0e2ba7",
+                "sha256:a189459086e97f2ff49203e9041f1f3d4b2a9502f02571d4e0087cc91b2cecd7"
+            ],
+            "index": "pypi",
+            "version": "==0.2.2"
         },
         "django-graphql-ratelimit": {
             "hashes": [
