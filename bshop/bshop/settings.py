@@ -12,14 +12,14 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 import sys
-from os import getenv
+import environ
 
-# import environ
-# env = environ.Env(DEBUG=(bool, False))
+env = environ.Env()
+
 ## reading .env file
-# environ.Env.read_env()
+environ.Env.read_env()
 
-RUN_IN_DOCKER = getenv("IN_DOCKER") == "YES"
+RUN_IN_DOCKER = env.bool("RUN_IN_DOCKER", default=False)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,16 +29,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = getenv(
-    "DJANOG_SECRET_KEY", "#5!23i=@=21j(7uytn&z07e$z--h@@m8ws*(ioyjz8_rgtfv3#"
+SECRET_KEY = env(
+    "SECRET_KEY", default="#5!23i=@=21j(7uytn&z07e$z--h@@m8ws*(ioyjz8_rgtfv3#"
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = getenv("DJANGO_DEBUG", False)
+DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = (
-    getenv("ALLOWED_HOSTS", "localhost, 127.0.0.1").replace(" ", "").split(",")
-)
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 
 # Application definition
@@ -99,16 +97,16 @@ WSGI_APPLICATION = "bshop.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 if RUN_IN_DOCKER:
-    DB_HOST = getenv("DB_HOST", "db")
+    DB_HOST = env("DB_HOST", default="db")
 else:
     DB_HOST = "localhost"
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": getenv("DB_NAME", "bshopdb"),
-        "USER": getenv("DB_USER", "bshop"),
-        "PASSWORD": getenv("DB_PASS", "password"),
+        "NAME": env("DB_NAME", default="bshopdb"),
+        "USER": env("DB_USER", default="bshop"),
+        "PASSWORD": env("DB_PASS", default="password"),
         "HOST": DB_HOST,
         "PORT": "5432",
     }
@@ -157,7 +155,7 @@ LOGGING = {
     "loggers": {
         "django": {
             "handlers": ["console"],
-            "level": getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "level": env("DJANGO_LOG_LEVEL", default="INFO"),
         },
         "factory": {"level": "ERROR"},
         "faker": {"level": "ERROR"},
@@ -165,7 +163,7 @@ LOGGING = {
 }
 
 # Avoid to be guessed the admin url by pentester
-SUB_ADMIN_URL = getenv("SUB_ADMIN_URL", "")
+SUB_ADMIN_URL = env("SUB_ADMIN_URL", default="")
 
 
 # Static files (CSS, JavaScript, Images)
@@ -202,14 +200,14 @@ CELERY_RESULT_SERIALIZER = "json"
 
 # Graphql Settings
 
-SHOW_GRAPHQL_DOC = getenv("SHOW_GRAPHQL_DOC", False)
+SHOW_GRAPHQL_DOC = env.bool("SHOW_GRAPHQL_DOC", default=False)
 
-if getenv("HIDE_GQL_SCHEMA") == "true":
+if env.bool("HIDE_GQL_SCHEMA", default=True):
     ProdGQLMiddleware = ["gql.middleware.HideIntrospectMiddleware"]
 else:
     ProdGQLMiddleware = []
 
-if getenv("DEBUG_GQL") == "true":
+if env.bool("DEBUG_GQL", default=False):
     DebugGQLMiddleware = ["graphene_django.debug.DjangoDebugMiddleware"]
 else:
     DebugGQLMiddleware = []
@@ -238,7 +236,7 @@ AUTHENTICATION_BACKENDS = [
 # Test settings
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
 
-if getenv("DISABLE_COVERAGE") != "true":
+if not env.bool("DISABLE_COVERAGE", default=False):
     NOSE_ARGS = [
         "--with-coverage",
         "--cover-package=gql,wallet,user_center",
@@ -251,28 +249,27 @@ SMS_BACKEND_DUMMY = "smsish.sms.backends.dummy.SMSBackend"
 SMS_BACKEND_TWILIO = "smsish.sms.backends.twilio.SMSBackend"
 SMS_BACKEND_YUNPIAN = "smsish.sms.backends.yunpian.SMSBackend"
 
-TEST_SMS_ALL = getenv("TEST_SMS_ALL") == "true"
-
-ENABLE_SMS = getenv("ENABLE_SMS") == "true"
+TEST_SMS_ALL = env.bool("TEST_SMS_ALL", default=False)
+ENABLE_SMS = env.bool("ENABLE_SMS", default=False)
 
 if ENABLE_SMS:
     SMS_BACKEND = SMS_BACKEND_TWILIO
 else:
     SMS_BACKEND = SMS_BACKEND_CONSOLE
 
-TWILIO_ACCOUNT_SID = getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = getenv("TWILIO_AUTH_TOKEN")
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", default="")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", default="")
 TWILIO_MAGIC_FROM_NUMBER = "+15005550006"  # This number passes all validation.
-TWILIO_FROM_NUMBER = getenv("TWILIO_FROM_NUMBER", TWILIO_MAGIC_FROM_NUMBER)
+TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER", default=TWILIO_MAGIC_FROM_NUMBER)
 
 
-YUNPIAN_API_KEY = getenv("YUNPIAN_API_KEY")
+YUNPIAN_API_KEY = env("YUNPIAN_API_KEY", default="")
 
 
 # Wechat settings
 
-WECHAT_APP_ID = getenv("WECHAT_APP_ID")
-WECHAT_APP_SECRET = getenv("WECHAT_APP_SECRET")
+WECHAT_APP_ID = env("WECHAT_APP_ID", default="")
+WECHAT_APP_SECRET = env("WECHAT_APP_SECRET", default="")
 
 
 # TODO: local settings for for dev

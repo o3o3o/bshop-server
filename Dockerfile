@@ -6,7 +6,7 @@ RUN set -ex && pip install pipenv --upgrade
 # -- Install Application into container:
 RUN set -ex && mkdir /app
 
-ENV IN_DOCKER YES
+ENV RUN_IN_DOCKER YES
 
 WORKDIR /app
 
