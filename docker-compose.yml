@@ -10,8 +10,6 @@ x-celery:
   depends_on:
     - "db"
     - "redis"
-  env_file:
-    - .web.env
 
 
 services:
@@ -44,8 +42,6 @@ services:
     depends_on:
       - "db"
       - "redis"
-    env_file:
-      - .web.env
 
   celery:
     << : *base-celery

@@ -1,4 +1,3 @@
-import os
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
@@ -33,13 +32,12 @@ def ignore_exceptions(event, hint):
     return event
 
 
-def sentry_init():
+def sentry_init(dsn, env):
     sentry_sdk.init(
-        # TODO: set from env: SENTRY_DSN
-        dsn="https://716ad574c3394e82b6d4f87414d5ea19@sentry.io/1492392",
+        dsn=dsn,
         integrations=[DjangoIntegration(), CeleryIntegration()],
         attach_stacktrace=True,
         # debug=True,
         before_send=ignore_exceptions,
-        environment=os.environ.get("ENVIRONMENT"),
+        environment=env,
     )

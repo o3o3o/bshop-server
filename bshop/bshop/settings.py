@@ -24,6 +24,11 @@ RUN_IN_DOCKER = env.bool("RUN_IN_DOCKER", default=False)
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+SENTRY_DSN = env("SENTRY_DSN", default=False)
+if SENTRY_DSN:
+    from common.sentry import sentry_init
+
+    sentry_init(SENTRY_DSN, env("ENVIRONMENT", default="dev"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
