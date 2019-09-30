@@ -27,10 +27,11 @@ django-fakeredis = "*"
 django-ipware = "*"
 django-graphql-ratelimit = "*"
 phonenumbers = "*"
-django-smsish2 = "==1.3.4"
 wechatpy = {extras = ["cryptography"],version = "*"}
 django-cache-fn = "*"
 django-graphql-jwt = "*"
+yunpian-python-sdk = "*"
+django-smsish2 = "==1.3.5"
 
 [requires]
 python_version = "3.7"

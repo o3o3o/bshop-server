@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "30ead0c47f02ce1d91705ae08f017c9797bf9b1633a26d38d82784627f1baad6"
+            "sha256": "74f523de239edab5fd593f847c8473f780da0ccd2851a02a5b8ae447ff994216"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -208,11 +208,11 @@
         },
         "django-smsish2": {
             "hashes": [
-                "sha256:b1c507c0533bfcbb6222e9dd75031a279f1029daac13c3cbc6a9d157c4c626cb",
-                "sha256:da48c3898259c8f0d5c569e9f4bfb6677d7b216c71208192240065712310749f"
+                "sha256:074d58f216b4f7054873efca980a2ec475a793bfa919ab2daf9bf52eadd30020",
+                "sha256:69c6da3199e3b56c739fb96fbd3030965a1a329a65d05be448f28cd3203ed93e"
             ],
             "index": "pypi",
-            "version": "==1.3.4"
+            "version": "==1.3.5"
         },
         "factory-boy": {
             "hashes": [
@@ -224,7 +224,7 @@
         },
         "faker": {
             "hashes": [
-                "sha256:45cc9cca3de8beba5a2da3bd82a6e5544f53da1a702645c8485f682366c15026",
+                "sha256:82e927459229bf61dff2c9b7deebc4b59e08aeda14b3f2061375cf9d751f0df8",
                 "sha256:a6459ff518d1fc6ee2238a7209e6c899517872c7e1115510279033ffe6fe8ef3"
             ],
             "version": "==2.0.2"
@@ -527,6 +527,14 @@
                 "sha256:8bbcb45cc982f48b2ca8fe7e7827c5d792f217ecf1792626f808bf41c3b86051"
             ],
             "version": "==0.12.0"
+        },
+        "yunpian-python-sdk": {
+            "hashes": [
+                "sha256:94a2d7af51683e1c75f4b15d06348f08aab0bcc50b5d7bd1ac8e9bb8c1fbbbf6",
+                "sha256:c2e55a9634d596dc7684a6abcb0c74b5683e4b85d4d51989f1c701bc0e45c244"
+            ],
+            "index": "pypi",
+            "version": "==1.0.0"
         },
         "zipp": {
             "hashes": [

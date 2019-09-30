@@ -249,6 +249,7 @@ if getenv("DISABLE_COVERAGE") != "true":
 SMS_BACKEND_CONSOLE = "smsish.sms.backends.console.SMSBackend"
 SMS_BACKEND_DUMMY = "smsish.sms.backends.dummy.SMSBackend"
 SMS_BACKEND_TWILIO = "smsish.sms.backends.twilio.SMSBackend"
+SMS_BACKEND_YUNPIAN = "smsish.sms.backends.yunpian.SMSBackend"
 
 TEST_SMS_ALL = getenv("TEST_SMS_ALL") == "true"
 
@@ -263,6 +264,9 @@ TWILIO_ACCOUNT_SID = getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = getenv("TWILIO_AUTH_TOKEN")
 TWILIO_MAGIC_FROM_NUMBER = "+15005550006"  # This number passes all validation.
 TWILIO_FROM_NUMBER = getenv("TWILIO_FROM_NUMBER", TWILIO_MAGIC_FROM_NUMBER)
+
+
+YUNPIAN_API_KEY = getenv("YUNPIAN_API_KEY")
 
 
 # Wechat settings

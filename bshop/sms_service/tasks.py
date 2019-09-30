@@ -2,7 +2,7 @@ from bshop.celery import app
 from smsish.sms import send_sms
 from django.conf import settings
 
-VALID_FROM_NUMBER = settings.TWILIO_MAGIC_FROM_NUMBER
+VALID_FROM_NUMBER = settings.TWILIO_MAGIC_FROM_NUMBER or ""
 
 
 @app.task
