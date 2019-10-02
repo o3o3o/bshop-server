@@ -7,7 +7,7 @@ from django.contrib.postgres.fields import JSONField
 class DecimalField(models.DecimalField):
     def __init__(self, **kw):
         kw.setdefault("max_digits", 65)
-        kw.setdefault("decimal_places", 30)
+        kw.setdefault("decimal_places", 4)
         kw.setdefault("default", d0)
         super(DecimalField, self).__init__(**kw)
 

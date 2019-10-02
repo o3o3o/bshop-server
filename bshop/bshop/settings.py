@@ -192,6 +192,11 @@ CACHES = {
         "LOCATION": f"redis://{REDIS_HOST}:6379/2",
         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     },
+    "wechat": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:6379/3",
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    },
 }
 # The name of the cache (from the CACHES dict) to use for django-ratelimit
 RATELIMIT_USE_CACHE = "ratelimit"
