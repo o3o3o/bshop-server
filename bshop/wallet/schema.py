@@ -4,6 +4,7 @@ import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 
+from common.schema import LoginProvider
 from user_center.models import ShopUser
 from wallet.order import wechat_create_order
 

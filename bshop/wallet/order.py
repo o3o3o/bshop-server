@@ -1,5 +1,5 @@
 import uuid
-from user_center.provider import get_open_id
+from user_center.provider import get_openid
 from provider import wechat
 
 

@@ -1,7 +1,4 @@
 import logging
-import requests
-from django.conf import settings
-from django.core.cache import caches
 
 from wechat_django.models import WeChatApp
 
@@ -21,14 +18,17 @@ def get_openid(auth_code):
 def create_order(
     body, total_fee, out_trade_no, wechat_user=None, openid=None, request=None
 ):
-    if open_id is None and wechat_user is None:
-        raise ValueError("open_id , wechat_user cannot be none at same time")
+    if openid is None and wechat_user is None:
+        raise ValueError("openid , wechat_user cannot be none at same time")
 
     app = get_wechat_app()
     order = app.pay.create_order(
-        user=wechat_user, body=body, total_fee=1, out_trade_no=out_trade_no
+        user=wechat_user,
+        body=body,
+        total_fee=1,
+        out_trade_no=out_trade_no,
         openid=openid,
-    ) 
+    )
     prepay = order.prepay(request)
     jsapi_params = order.jsapi_params(prepay["prepay_id"])
     return jsapi_params

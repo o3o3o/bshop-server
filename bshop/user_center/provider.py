@@ -24,7 +24,7 @@ PROVIDERS = {
     LoginProvider.ALIPAY.value: {
         "field": "alipay_id",
         "get_openid": alipay.get_openid,
-        "get_openid": alipay.create_order,
+        "create_pay_order": alipay.create_order,
     },
 }
 
