@@ -2,7 +2,7 @@ from django.db import models
 from django.db import transaction
 from django.contrib.auth.models import User
 
-from user_center.provider import get_provider_field, get_open_id
+from user_center.provider import get_provider_field, get_openid
 from common.base_models import BaseModel, ModelWithExtraInfo
 from common import exceptions
 
@@ -16,7 +16,7 @@ class ShopUserManager(models.Manager):
 
     def get_user_by_auth_code(self, provider, auth_code):
         field = get_provider_field(provider)
-        openid = get_open_id(provider, auth_code)
+        openid = get_openid(provider, auth_code)
         kw = {field: openid}
         shop_user = self.get(**kw)
         return shop_user
@@ -71,7 +71,7 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     def bind_third_account(self, provider, auth_code):
 
         field = get_provider_field(provider)
-        openid = get_open_id(provider, auth_code)
+        openid = get_openid(provider, auth_code)
 
         val = getattr(self, field)
         if val:

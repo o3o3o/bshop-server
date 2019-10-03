@@ -3,39 +3,32 @@ import requests
 from django.conf import settings
 from django.core.cache import caches
 
-from wechatpy import WeChatClient as _Client
+from wechat_django.models import WeChatApp
 
 logger = logging.getLogger(__name__)
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        else:
-            print("Use the same instance")
-        return cls._instances[cls]
+def get_wechat_app():
+    return WeChatApp.objects.get_by_name("liuxiaoge")
 
 
-class WechatClient(_Client, metaclass=Singleton):
-    def __init__(self):
-        super().__init__(
-            settings.WECHAT_APP_ID, settings.WECHAT_APP_SECRET, session=caches["wechat"]
-        )
+def get_openid(auth_code):
+    app = get_wechat_app()
+    _, data = app.auth(auth_code)
+    return data["openid"]
 
-    def get_open_id(self, js_code):
-        # https://wechatpy.readthedocs.io/zh_CN/master/client/wxa.html#wechatpy.client.api.WeChatWxa.code_to_session
-        res = self.code_to_session(js_code)
-        d = res.json()
-        logger.debug(f"wechat open id: {d}")
-        if d.get("errcode", 0) != 0:
-            logger.exception(f"wechat code2openid error, {d}")
-            if d.get("errcode") == 40163:
-                # code been used
-                raise exceptions.CodeBeUsed
-        elif "openid" in d:
-            return d["openid"]
-        else:
-            raise Exception(f"wechat failed to get openid: {d}")
+
+def create_order(
+    body, total_fee, out_trade_no, wechat_user=None, openid=None, request=None
+):
+    if open_id is None and wechat_user is None:
+        raise ValueError("open_id , wechat_user cannot be none at same time")
+
+    app = get_wechat_app()
+    order = app.pay.create_order(
+        user=wechat_user, body=body, total_fee=1, out_trade_no=out_trade_no
+        openid=openid,
+    ) 
+    prepay = order.prepay(request)
+    jsapi_params = order.jsapi_params(prepay["prepay_id"])
+    return jsapi_params

@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     "django_nose",
     "graphene_django",
     "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
+    "wechat_django",
+    "wechat_django.pay",
     "ratelimit",
     "smsish",
     "common",
@@ -278,8 +280,12 @@ YUNPIAN_API_KEY = env("YUNPIAN_API_KEY", default="")
 
 # Wechat settings
 
-WECHAT_APP_ID = env("WECHAT_APP_ID", default="")
-WECHAT_APP_SECRET = env("WECHAT_APP_SECRET", default="")
+# WECHAT_APP_ID = env("WECHAT_APP_ID", default="")
+# WECHAT_APP_SECRET = env("WECHAT_APP_SECRET", default="")
+
+WECHAT_SITE_HOST = env("WECHAT_SITE_HOST", default=None)
+WECHAT_PATCHADMINSITE = False
+# WECHAT_SESSIONSTORAGE = CACHES["wechat"]["BACKEND"]
 
 
 # TODO: local settings for for dev

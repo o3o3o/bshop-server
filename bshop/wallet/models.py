@@ -13,9 +13,10 @@ class Fund(BaseModel, ModelWithExtraInfo):
 
 class FundTransfer(BaseModel, ModelWithExtraInfo):
     from_fund = models.ForeignKey(
-        Fund, models.CASCADE, related_name="transfer_as_from", db_index=True
+        Fund, models.CASCADE, related_name="transfer_as_from", db_index=True, null=True
     )
     to_fund = models.ForeignKey(
-        Fund, models.CASCADE, related_name="transfer_as_to", db_index=True
+        Fund, models.CASCADE, related_name="transfer_as_to", db_index=True, null=True
     )
     amount = DecimalField()
+    # order_id = models.chapter
