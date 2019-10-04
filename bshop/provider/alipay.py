@@ -1,4 +1,4 @@
-def get_open_id():
+def get_openid():
     pass
 
 

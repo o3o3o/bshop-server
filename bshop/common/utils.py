@@ -3,6 +3,7 @@ import copy
 import time
 import json
 import decimal
+import urllib.parse
 from functools import wraps
 from decimal import Decimal
 from datetime import datetime
@@ -35,6 +36,10 @@ def to_decimal(v, default="0", digits=8):
 
 def is_decimal(v):
     return isinstance(v, Decimal)
+
+
+def urlencode(d):
+    return urllib.parse.urlencode(d)
 
 
 def timeit(method):

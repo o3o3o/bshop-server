@@ -2,6 +2,7 @@ from django.db import models
 from user_center.models import ShopUser
 from common.base_models import BaseModel, DecimalField, ModelWithExtraInfo
 
+
 # Create your models here.
 class Fund(BaseModel, ModelWithExtraInfo):
     shop_user = models.ForeignKey(

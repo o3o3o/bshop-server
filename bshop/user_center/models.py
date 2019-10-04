@@ -32,6 +32,8 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     avatar_url = models.CharField(max_length=512, null=True, blank=True)
     wechat_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
     alipay_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
+    vendor_name = models.CharField(max_length=128, null=True, blank=True, unique=True)
+    is_vendor = models.BooleanField(default=False)
 
     objects = ShopUserManager()
 
