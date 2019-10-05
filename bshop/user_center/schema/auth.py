@@ -176,3 +176,39 @@ class BindThirdAccount(graphene.Mutation):
             raise exceptions.GQLError(e.message)
 
         return Result(success=True)
+
+
+class SetPaymentPassword(graphene.Mutation):
+    class Arguments:
+        password = graphene.String(required=True)
+
+    Output = Result
+
+    @login_required
+    def mutate(self, info, password, **kw):
+        # TODO: payment password
+        shop_user = info.context.user.shop_user
+        if shop_user.has_payment_password:
+            raise exceptions.GQLError("already_exist")
+
+        shop_user.set_payment_password(password)
+
+        return Result(success=True)
+
+
+class ChangePaymentPassword(graphene.Mutation):
+    class Arguments:
+        old_password = graphene.String(required=True)
+        new_password = graphene.String(required=True)
+
+    Output = Result
+
+    @login_required
+    def mutate(self, info, old_password, new_password, **kw):
+        shop_user = info.context.user.shop_user
+        if shop_user.has_payment_password:
+            if not shop_user.check_password(old_password):
+                raise exceptions.GQLError("wrong_old_password")
+
+        shop_user.set_payment_password(new_password)
+        return Result(success=True)

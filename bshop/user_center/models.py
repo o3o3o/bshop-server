@@ -1,6 +1,8 @@
 from django.db import models
 from django.db import transaction
 from django.contrib.auth.models import User
+from django.utils.translation import ugettext_lazy as _
+from django.contrib.auth.hashers import make_password, check_password as _check_password
 
 from user_center.provider import get_provider_field, get_openid
 from common.base_models import BaseModel, ModelWithExtraInfo
@@ -32,8 +34,19 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     avatar_url = models.CharField(max_length=512, null=True, blank=True)
     wechat_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
     alipay_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
-    vendor_name = models.CharField(max_length=128, null=True, blank=True, unique=True)
-    is_vendor = models.BooleanField(default=False)
+    vendor_name = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name=_("Vendor Name"),
+    )
+    is_vendor = models.BooleanField(default=False, verbose_name=_("Is vendor"))
+
+    # TODO: use secret + sixdigit to encrypt the raw password
+    payment_password = models.CharField(
+        max_length=1024, null=True, blank=True, verbose_name=_("Payment password")
+    )
 
     objects = ShopUserManager()
 
@@ -69,6 +82,24 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     def avatar(self, value):
         self.avatar_url = value
         self.save(update_fields=["avatar_url"])
+
+    @property
+    def has_payment_password(self):
+        return bool(self.payment_password)
+
+    def set_payment_password(self, password):
+        self.payment_password = make_password(password)
+
+    def check_password(self, password):
+        res = _check_password(password, self.payment_password)
+        if res is False:
+            key = "payment_password_retries"
+            cnt = self.extra_info.get(key, 0)
+            cny += 1
+            self.extra_info[key] = cny
+            self.save(update_fields(['extra_info'])
+
+        return res
 
     def bind_third_account(self, provider, auth_code):
 

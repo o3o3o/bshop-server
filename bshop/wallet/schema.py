@@ -1,11 +1,11 @@
 import logging
 
 import graphene
-from graphql.error import GraphQLError
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 
-from common.schema import LoginProvider
+from common import exceptions
+from common.schema import LoginProvider, Result
 from common.utils import urlencode
 
 # from user_center.models import ShopUser
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 #    pass
 
 
-class CreatePayOrderInput(graphene.InputObjectType):
+class CreateDepositOrderInput(graphene.InputObjectType):
     provider = graphene.Field(LoginProvider, required=True)
     code = graphene.String()
     amount = graphene.Decimal(required=True)
@@ -26,9 +26,9 @@ class CreatePayOrderInput(graphene.InputObjectType):
 
 
 # https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=9_1&index=1
-class CreatePayOrder(graphene.Mutation):
+class CreateDepositOrder(graphene.Mutation):
     class Arguments:
-        params = CreatePayOrderInput(required=True, name="input")
+        params = CreateDepositOrderInput(required=True, name="input")
 
     # wechat \ alipay...
     payment = graphene.JSONString()
@@ -43,16 +43,40 @@ class CreatePayOrder(graphene.Mutation):
         return "{}"
 
 
+class TransferInput(graphene.InputObjectType):
+    to = graphene.UUID(required=True)
+    amount = graphene.Decimal(required=True)
+    note = graphene.String()
+    payment_password = graphene.String(required=True)
+    request_id = graphene.UUID(required=True)
+
+
+class Transfer(graphene.Mutation):
+    class Arguments:
+        params = TransferInput(required=True, name="input")
+
+    Output = Result
+
+    @login_required
+    def mutate(self, info, params):
+        # TODO:
+        # 1. avoid resubmiti
+        # 2. check payment password
+        # 3.
+        return Result(success=True)
+
+
+class Mutation(graphene.ObjectType):
+    create_deposit_order = CreateDepositOrder.Field()
+    transfer = Transfer.Field()
+
+
 class VendorInfo(graphene.ObjectType):
     vendor_id = graphene.ID()
     vendor_name = graphene.String()
     schema = graphene.String()
     type = graphene.String()
     qr = graphene.String()
-
-
-class Mutation(graphene.ObjectType):
-    create_pay_order = CreatePayOrder.Field()
 
 
 class Query(graphene.ObjectType):
@@ -62,7 +86,7 @@ class Query(graphene.ObjectType):
     def resolve_vendor_receive_pay_qr(self, info):
         shop_user = info.context.user.shop_user
         if not shop_user.is_vendor:
-            raise GraphQLError("not_vendor")
+            raise exceptions.GQLError("not_vendor")
 
         qr = "bshop://pay/?" + urlencode(
             {"vendorId": shop_user.uuid, "vendorName": shop_user.vendor_name}

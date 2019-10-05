@@ -12,6 +12,7 @@ from user_center.schema.auth import (
     RequestVerificationCode,
     VerifyCode,
     BindThirdAccount,
+    SetPaymentPassword,
 )
 from user_center.schema.user import Me, UpdateUserInfo
 
@@ -46,6 +47,7 @@ class Mutation(graphene.ObjectType):
     request_verification_code = RequestVerificationCode.Field()
     verify_code = VerifyCode.Field()
     bind_third_account = BindThirdAccount.Field()
+    set_payment_password = SetPaymentPassword.Field()
     sign_in = SignIn.Field()
     sign_up = SignUp.Field()
     verify_token = graphql_jwt.Verify.Field()
