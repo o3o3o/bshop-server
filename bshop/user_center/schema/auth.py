@@ -207,7 +207,7 @@ class ChangePaymentPassword(graphene.Mutation):
     def mutate(self, info, old_password, new_password, **kw):
         shop_user = info.context.user.shop_user
         if shop_user.has_payment_password:
-            if not shop_user.check_password(old_password):
+            if not shop_user.check_payemnt_password(old_password):
                 raise exceptions.GQLError("wrong_old_password")
 
         shop_user.set_payment_password(new_password)

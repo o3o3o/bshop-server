@@ -1,8 +1,7 @@
-from django.db import models
-from django.db import transaction
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
-from django.contrib.auth.hashers import make_password, check_password as _check_password
+from django.contrib.auth.hashers import make_password, check_password
 
 from user_center.provider import get_provider_field, get_openid
 from common.base_models import BaseModel, ModelWithExtraInfo
@@ -89,15 +88,16 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
 
     def set_payment_password(self, password):
         self.payment_password = make_password(password)
+        self.save(update_fields=["payment_password"])
 
-    def check_password(self, password):
-        res = _check_password(password, self.payment_password)
+    def check_payemnt_password(self, password):
+        res = check_password(password, self.payment_password)
         if res is False:
             key = "payment_password_retries"
             cnt = self.extra_info.get(key, 0)
-            cny += 1
-            self.extra_info[key] = cny
-            self.save(update_fields(['extra_info'])
+            cnt += 1
+            self.extra_info[key] = cnt
+            self.save(update_fields=["extra_info"])
 
         return res
 
@@ -107,9 +107,8 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
         openid = get_openid(provider, auth_code)
 
         val = getattr(self, field)
-        if val:
-            if val != openid:
-                raise exceptions.AlreadyBinded
+        if val and val != openid:
+            raise exceptions.AlreadyBinded
         else:
             setattr(self, field, openid)
             self.save(update_fields=[field])

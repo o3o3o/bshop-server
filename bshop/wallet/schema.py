@@ -6,16 +6,24 @@ from graphql_jwt.decorators import login_required
 
 from common import exceptions
 from common.schema import LoginProvider, Result
-from common.utils import urlencode
+from common.utils import urlencode, AvoidResubmit
 
-# from user_center.models import ShopUser
+from user_center.models import ShopUser
+from wallet.models import do_transfer, FundAction
 from wallet.order import wechat_create_order
 
 logger = logging.getLogger(__name__)
 
 
-# class Ledger(DjangoObjectType):
-#    pass
+class Ledger(DjangoObjectType):
+    id = graphene.UUID()
+
+    class Meta:
+        model = FundAction
+        only_fields = ("amount", "note")
+
+    def resolve_id(self, info):
+        return self.uuid
 
 
 class CreateDepositOrderInput(graphene.InputObjectType):
@@ -59,10 +67,32 @@ class Transfer(graphene.Mutation):
 
     @login_required
     def mutate(self, info, params):
-        # TODO:
-        # 1. avoid resubmiti
+        # 1. avoid resubmit
+        shop_user = info.context.user.shop_user
+
+        avoid_resubmit = AvoidResubmit("transferPay")
+        try:
+            avoid_resubmit(params.request_id, shop_user.id)
+        except avoid_resubmit.ResubmittedError as e:
+            raise exceptions.GQLError(e.message)
+
         # 2. check payment password
-        # 3.
+        try:
+            if not shop_user.has_payment_password:
+                raise exceptions.NeedSetPaymentPassword
+
+            if not shop_user.check_payemnt_password(params.payment_password):
+                raise exceptions.WrongPassword
+        except exceptions.ErrorResultException as e:
+            raise exceptions.GQLError(e.message)
+
+        # TODO:
+        # 3. do transfer
+        to_user = ShopUser.objects.get(uuid=params.to)
+        do_transfer(
+            from_user=shop_user, to_user=to_user, amount=params.amount, note=params.note
+        )
+
         return Result(success=True)
 
 
