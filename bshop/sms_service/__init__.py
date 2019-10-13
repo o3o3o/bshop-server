@@ -6,7 +6,7 @@ from sms_service.tasks import async_send_single_msg
 
 logger = logging.getLogger(__name__)
 
-PREFIX = "【刘小哥】"
+PREFIX = "【柳小哥】"
 
 SESSION_CODE_TIMEOUT = getattr(settings, "SESSION_CODE_TIMEOUT", 60)
 
