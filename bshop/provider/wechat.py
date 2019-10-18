@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from common.utils import yuan2fen
 
 from wechat_django.models import WeChatApp, WeChatUser
 
@@ -32,7 +33,7 @@ def create_order(
     order = app.pay.create_order(
         user=wechat_user,
         body=body,
-        total_fee=amount * 100,  # Yuan to Fen
+        total_fee=yuan2fen(amount),  # Yuan to Fen
         out_trade_no=out_trade_no,
         openid=openid,
         ext_info=ext_info,

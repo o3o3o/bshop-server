@@ -1,13 +1,15 @@
 import json
 import uuid
 from unittest.mock import patch
+from django.test import RequestFactory
 
 # from unittest import skip
 
 from graphql_jwt.testcases import JSONWebTokenTestCase
 from django_fakeredis import FakeRedis
 
-# from wechat_django.pay.models import UnifiedOrder
+from wechat_django.pay.models import UnifiedOrder, WeChatPay
+from wechat_django.models import WeChatApp
 
 from common.utils import ordered_dict_2_dict, urlencode, to_decimal
 from user_center.factory import ShopUserFactory
@@ -16,6 +18,23 @@ from wallet.models import FundAction
 
 
 class WalletTests(JSONWebTokenTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        miniprogram = WeChatApp.objects.create(
+            title="miniprogram",
+            name="miniprogram",
+            appid="miniprogram",
+            appsecret="secret",
+            type=WeChatApp.Type.MINIPROGRAM,
+        )
+        WeChatPay.objects.create(
+            app=miniprogram,
+            mch_id="mch_id",
+            api_key="api_key",
+            mch_cert=b"mch_cert",
+            mch_key=b"mch_key",
+        )
+
     def setUp(self):
         self.shop_user = ShopUserFactory()
         self.user = self.shop_user.user
@@ -24,6 +43,9 @@ class WalletTests(JSONWebTokenTestCase):
         self.shop_user2 = ShopUserFactory(is_vendor=True)
         self.user2 = self.shop_user2.user
         self.fund2 = FundFactory(shop_user=self.shop_user2)
+
+        self.miniprogram = WeChatApp.objects.get_by_name("miniprogram")
+        self.request = RequestFactory()
 
     def tearDown(self):
         self.shop_user.delete()
@@ -65,11 +87,12 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertIsNone(data.errors)
         expected = json.dumps(mocked_result)
         self.assertEqual(data.data["createPayOrder"]["payment"], expected)
+        # TODO: mock order
         # order = UnifiedOrder.objects.get(openid=mocked_openid)
         # self.assertEquals(order.total_fee, 1231)
         # self.assertNotIn("to_user_id", order.ext_info)
 
-        # test transfer
+        # TODO: test transfer
 
         # test order is success...
 

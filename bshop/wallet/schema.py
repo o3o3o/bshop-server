@@ -31,6 +31,7 @@ class CreatePayOrderInput(graphene.InputObjectType):
     code = graphene.String()
     amount = graphene.Decimal(required=True)
     to = graphene.UUID()
+    request_id = graphene.UUID(required=True)
 
 
 # https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=9_1&index=1
@@ -43,6 +44,15 @@ class CreatePayOrder(graphene.Mutation):
 
     @login_required
     def mutate(self, info, params):
+
+        shop_user = info.context.user.shop_user
+
+        avoid_resubmit = AvoidResubmit("createPayOrder")
+        try:
+            avoid_resubmit(params.request_id, shop_user.id)
+        except avoid_resubmit.ResubmittedError as e:
+            raise exceptions.GQLError(e.message)
+
         res = None
         if params.provider == LoginProvider.WECHAT.value:
             to_user = None
