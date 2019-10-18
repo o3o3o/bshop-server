@@ -26,29 +26,39 @@ class Ledger(DjangoObjectType):
         return self.uuid
 
 
-class CreateDepositOrderInput(graphene.InputObjectType):
+class CreatePayOrderInput(graphene.InputObjectType):
     provider = graphene.Field(LoginProvider, required=True)
     code = graphene.String()
     amount = graphene.Decimal(required=True)
-    # ip = graphene.String()
+    to = graphene.UUID()
 
 
 # https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=9_1&index=1
-class CreateDepositOrder(graphene.Mutation):
+class CreatePayOrder(graphene.Mutation):
     class Arguments:
-        params = CreateDepositOrderInput(required=True, name="input")
+        params = CreatePayOrderInput(required=True, name="input")
 
     # wechat \ alipay...
     payment = graphene.JSONString()
 
     @login_required
     def mutate(self, info, params):
+        res = None
         if params.provider == LoginProvider.WECHAT.value:
-            wechat_create_order(params.provider, params.code, params.amount)
+            to_user = None
+            if params.to:
+                to_user = ShopUser.objects.get(uuid=params.to)
+
+            res = wechat_create_order(
+                params.provider, params.code, params.amount, to_user=to_user
+            )
+            # print("wechat result: ", res)
         elif params.provider == LoginProvider.ALIPAY.value:
             pass
+        else:
+            raise exceptions.GQLError(f"Does not support {params.provider}")
 
-        return "{}"
+        return CreatePayOrder(payment=res)
 
 
 class TransferInput(graphene.InputObjectType):
@@ -97,7 +107,7 @@ class Transfer(graphene.Mutation):
 
 
 class Mutation(graphene.ObjectType):
-    create_deposit_order = CreateDepositOrder.Field()
+    create_pay_order = CreatePayOrder.Field()
     transfer = Transfer.Field()
 
 

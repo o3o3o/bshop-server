@@ -1,9 +1,13 @@
+import json
 import uuid
 from unittest.mock import patch
-from unittest import skip
+
+# from unittest import skip
 
 from graphql_jwt.testcases import JSONWebTokenTestCase
 from django_fakeredis import FakeRedis
+
+# from wechat_django.pay.models import UnifiedOrder
 
 from common.utils import ordered_dict_2_dict, urlencode, to_decimal
 from user_center.factory import ShopUserFactory
@@ -32,26 +36,42 @@ class WalletTests(JSONWebTokenTestCase):
 
         FundAction.objects.all().delete()
 
-    @skip("pending")
     def test_pre_create_order(self):
         self.client.authenticate(self.user)
 
         gql = """
-        mutation _($input: CreateDepositOrderInput!){
-          createDepositOrder(input: $input){
+        mutation _($input: CreatePayOrderInput!){
+          createPayOrder(input: $input){
             payment
           }
         }"""
-        variables = {"input": {"provider": "WECHAT", "code": "1234", "amount": "123.1"}}
+        variables = {"input": {"provider": "WECHAT", "code": "1234", "amount": "12.31"}}
 
+        mocked_result = {
+            "appId": "wx74389d88c9f437dc",
+            "timeStamp": "1571289315",
+            "nonceStr": "LiKeWq8TGVd3rQlmAY17EMhpagOw4obx",
+            "signType": "MD5",
+            "package": "prepay_id=wx17131459805524ca5ee4012e1090096300",
+            "paySign": "05AFA977E030B5776C82CB8146C03CA9",
+        }
+        mocked_openid = "fake_open_id"
         with patch("wallet.order.get_openid") as mock_get_openid:
-            mock_get_openid.return_value = "fake_open_id"
+            mock_get_openid.return_value = mocked_openid
             with patch("provider.wechat.create_order") as mock_create_order:
-                mock_create_order.return_value = {}
+                mock_create_order.return_value = mocked_result
                 data = self.client.execute(gql, variables)
 
-        self.assertIsNotNone(data.errors)
-        self.assertDictEqual(data.data["createDepositOrder"]["payment"])
+        self.assertIsNone(data.errors)
+        expected = json.dumps(mocked_result)
+        self.assertEqual(data.data["createPayOrder"]["payment"], expected)
+        # order = UnifiedOrder.objects.get(openid=mocked_openid)
+        # self.assertEquals(order.total_fee, 1231)
+        # self.assertNotIn("to_user_id", order.ext_info)
+
+        # test transfer
+
+        # test order is success...
 
     def test_get_qr_code_info(self):
         self.client.authenticate(self.user)

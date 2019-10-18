@@ -56,7 +56,7 @@ class FundAction(BaseModel, ModelWithExtraInfo):
     )
     amount = DecimalField()
     note = models.CharField(max_length=128, null=True, blank=True)
-    # order_id = models.chapter
+    order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
 
     objects = FundActionManager()
 
@@ -75,4 +75,28 @@ def do_transfer(from_user, to_user, amount: Decimal, note: str = None):
     action = FundAction.objects.create(
         from_fund=from_fund, to_fund=to_fund, amount=amount, note=note
     )
+    return action
+
+
+@transaction.atomic
+def do_deposit(user, amount: Decimal, order_id: str, note: str = None):
+    fund = user.user_funds.get(currency="CNY")
+
+    if amount <= d0:
+        raise ValueError("Invalid minus amount")
+    Fund.objects.incr_cash(fund.id, amount)
+
+    action = FundAction.objects.create(to_fund=fund, amount=amount, order_id=order_id)
+    return action
+
+
+@transaction.atomic
+def do_withdraw(user, amount: Decimal, order_id: str, note: str = None):
+    fund = user.user_funds.get(currency="CNY")
+
+    if amount <= d0:
+        raise ValueError("Invalid minus amount")
+    Fund.objects.decr_cash(fund.id, amount)
+
+    action = FundAction.objects.create(from_fund=fund, amount=amount, order_id=order_id)
     return action

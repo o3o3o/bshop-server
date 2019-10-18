@@ -22,6 +22,12 @@ class ShopUserManager(models.Manager):
         shop_user = self.get(**kw)
         return shop_user
 
+    def get_user_by_openid(self, provider, openid):
+        field = get_provider_field(provider)
+        kw = {field: openid}
+        shop_user = self.get(**kw)
+        return shop_user
+
 
 class ShopUser(BaseModel, ModelWithExtraInfo):
 
