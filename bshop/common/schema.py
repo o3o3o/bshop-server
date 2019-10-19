@@ -33,6 +33,15 @@ class FiatCurrency(EnumChoice):
     CNY = "CNY"
 
 
+# https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=9_2
+class OrderState(EnumChoice):
+    SUCCESS = "SUCCESS"
+    NOTPAY = "NOTPAY"
+    USERPAYING = "USERPAYING"
+    REFUND = "REFUND"
+    PAYERROR = "PAYERROR"
+
+
 class Amount(graphene.ObjectType):
     amount = graphene.String()
     sign = graphene.String()

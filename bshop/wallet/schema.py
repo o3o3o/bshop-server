@@ -5,12 +5,12 @@ from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 
 from common import exceptions
-from common.schema import LoginProvider, Result
+from common.schema import LoginProvider, Result, OrderState
 from common.utils import urlencode, AvoidResubmit
 
 from user_center.models import ShopUser
 from wallet.models import do_transfer, FundAction
-from wallet.order import wechat_create_order
+from provider import get_provider_cls
 
 logger = logging.getLogger(__name__)
 
@@ -53,19 +53,13 @@ class CreatePayOrder(graphene.Mutation):
         except avoid_resubmit.ResubmittedError as e:
             raise exceptions.GQLError(e.message)
 
-        res = None
-        if params.provider == LoginProvider.WECHAT.value:
-            to_user = None
-            if params.to:
-                to_user = ShopUser.objects.get(uuid=params.to)
-
-            res = wechat_create_order(
-                params.provider, params.code, params.amount, to_user=to_user
-            )
-            # print("wechat result: ", res)
-        elif params.provider == LoginProvider.ALIPAY.value:
-            pass
-        else:
+        to_user = None
+        if params.to:
+            to_user = ShopUser.objects.get(uuid=params.to)
+        try:
+            cls = get_provider_cls(params.provider)
+            res = cls().create_pay_order(params.code, params.amount, to_user=to_user)
+        except exceptions.DoNotSupportBindType:
             raise exceptions.GQLError(f"Does not support {params.provider}")
 
         return CreatePayOrder(payment=res)
@@ -121,6 +115,11 @@ class Mutation(graphene.ObjectType):
     transfer = Transfer.Field()
 
 
+class OrderInfo(graphene.ObjectType):
+    id = graphene.ID()
+    state = graphene.Field(OrderState)
+
+
 class VendorInfo(graphene.ObjectType):
     vendor_id = graphene.ID()
     vendor_name = graphene.String()
@@ -131,6 +130,18 @@ class VendorInfo(graphene.ObjectType):
 
 class Query(graphene.ObjectType):
     vendor_receive_pay_qr = graphene.Field(VendorInfo)
+    order_info = graphene.Field(
+        OrderInfo, provider=graphene.Argument(LoginProvider), order_id=graphene.String()
+    )
+
+    @login_required
+    def resolve_order_info(self, info, provider, order_id, **kw):
+        cls = get_provider_cls(provider)
+        res = cls().order_info(order_id)
+        if res:
+            return OrderInfo(**res)
+        else:
+            return None
 
     @login_required
     def resolve_vendor_receive_pay_qr(self, info):

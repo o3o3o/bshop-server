@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth.hashers import make_password, check_password
 
-from user_center.provider import get_provider_field, get_openid
+from provider import get_provider_cls
 from common.base_models import BaseModel, ModelWithExtraInfo
 from common import exceptions
 
@@ -16,15 +16,17 @@ class ShopUserManager(models.Manager):
         return shop_user
 
     def get_user_by_auth_code(self, provider, auth_code):
-        field = get_provider_field(provider)
-        openid = get_openid(provider, auth_code)
-        kw = {field: openid}
+        cls = get_provider_cls(provider)
+        obj = cls()
+        openid = obj.get_openid(auth_code)
+        kw = {obj.field: openid}
         shop_user = self.get(**kw)
         return shop_user
 
     def get_user_by_openid(self, provider, openid):
-        field = get_provider_field(provider)
-        kw = {field: openid}
+        cls = get_provider_cls(provider)
+        obj = cls()
+        kw = {obj.field: openid}
         shop_user = self.get(**kw)
         return shop_user
 
@@ -109,12 +111,13 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
 
     def bind_third_account(self, provider, auth_code):
 
-        field = get_provider_field(provider)
-        openid = get_openid(provider, auth_code)
+        cls = get_provider_cls(provider)
+        obj = cls()
+        openid = obj.get_openid(auth_code)
 
-        val = getattr(self, field)
+        val = getattr(self, obj.field)
         if val and val != openid:
             raise exceptions.AlreadyBinded
         else:
-            setattr(self, field, openid)
-            self.save(update_fields=[field])
+            setattr(self, obj.field, openid)
+            self.save(update_fields=[obj.field])

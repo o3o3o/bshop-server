@@ -8,7 +8,7 @@ from django.test import RequestFactory
 from graphql_jwt.testcases import JSONWebTokenTestCase
 from django_fakeredis import FakeRedis
 
-from wechat_django.pay.models import UnifiedOrder, WeChatPay
+from wechat_django.pay.models import WeChatPay  # , UnifiedOrder
 from wechat_django.models import WeChatApp
 
 from common.utils import ordered_dict_2_dict, urlencode, to_decimal

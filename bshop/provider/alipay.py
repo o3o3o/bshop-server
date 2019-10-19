@@ -1,6 +1,11 @@
-def get_openid():
-    pass
+import logging
+from provider import BaseProvider
+from common.schema import LoginProvider
 
 
-def create_order():
-    pass
+logger = logging.getLogger(__name__)
+
+
+class WeChatProvider(BaseProvider):
+    field = "alipay_id"
+    name = LoginProvider.ALIPAY.value

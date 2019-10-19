@@ -20,7 +20,6 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 import wechat_django
 import wechat_django.pay.notify  # noqa
-from wallet.order import test_wechat_order
 
 from gql.views import graphql_view
 
@@ -31,6 +30,5 @@ admin_url = "admin" + settings.SUB_ADMIN_URL + "/"
 urlpatterns = [
     path(admin_url, admin.site.urls),
     path("api/gql", graphql_view),
-    path("test", test_wechat_order),
     path("wechat/", wechat_django.sites.wechat.urls),
 ] + staticfiles_urlpatterns()
