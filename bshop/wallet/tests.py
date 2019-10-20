@@ -12,9 +12,10 @@ from wechat_django.pay.models import WeChatPay  # , UnifiedOrder
 from wechat_django.models import WeChatApp
 
 from common.utils import ordered_dict_2_dict, urlencode, to_decimal
+from provider.wechat import WeChatProvider
 from user_center.factory import ShopUserFactory
 from wallet.factory import FundFactory
-from wallet.models import FundAction
+from wallet.models import Fund, FundAction, do_deposit, do_transfer, do_withdraw
 
 
 class WalletTests(JSONWebTokenTestCase):
@@ -67,7 +68,14 @@ class WalletTests(JSONWebTokenTestCase):
             payment
           }
         }"""
-        variables = {"input": {"provider": "WECHAT", "code": "1234", "amount": "12.31"}}
+        variables = {
+            "input": {
+                "provider": "WECHAT",
+                "code": "1234",
+                "amount": "12.31",
+                "requestId": uuid.uuid4().hex,
+            }
+        }
 
         mocked_result = {
             "appId": "wx74389d88c9f437dc",
@@ -78,9 +86,9 @@ class WalletTests(JSONWebTokenTestCase):
             "paySign": "05AFA977E030B5776C82CB8146C03CA9",
         }
         mocked_openid = "fake_open_id"
-        with patch("wallet.order.get_openid") as mock_get_openid:
+        with patch.object(WeChatProvider, "get_openid") as mock_get_openid:
             mock_get_openid.return_value = mocked_openid
-            with patch("provider.wechat.create_order") as mock_create_order:
+            with patch.object(WeChatProvider, "create_order") as mock_create_order:
                 mock_create_order.return_value = mocked_result
                 data = self.client.execute(gql, variables)
 
@@ -95,6 +103,91 @@ class WalletTests(JSONWebTokenTestCase):
         # TODO: test transfer
 
         # test order is success...
+
+    def test_fund_api(self):
+        self.client.authenticate(self.user)
+        gql = """
+        query {
+          fund{
+            cash
+            currency
+          }
+        }"""
+        data = self.client.execute(gql)
+        self.assertIsNone(data.errors)
+        expected = {"cash": float(self.fund.cash), "currency": "CNY"}
+        self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
+
+        new_add_cash = to_decimal("1.2")
+        do_deposit(self.shop_user, new_add_cash, order_id="1", note="test")
+        old_cash = self.fund.cash
+
+        self.fund.refresh_from_db()
+        self.assertEquals(old_cash + new_add_cash, self.fund.cash)
+
+        data = self.client.execute(gql)
+        self.assertIsNone(data.errors)
+        expected = {"cash": float(self.fund.cash), "currency": "CNY"}
+        self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
+
+    def test_transfer(self):
+        delta = to_decimal("2.3")
+        fund_action = do_transfer(
+            self.shop_user, self.shop_user2, delta, note="test transfer"
+        )
+        user_old_cash = self.fund.cash
+        user_old_cash2 = self.fund2.cash
+
+        self.fund.refresh_from_db()
+        self.fund2.refresh_from_db()
+
+        self.assertEquals(self.fund.cash, user_old_cash - delta)
+        self.assertEquals(self.fund2.cash, user_old_cash2 + delta)
+        self.assertEquals(fund_action.note, "test transfer")
+
+        # test insufficient cash
+        delta = self.fund.cash + to_decimal("0.1")
+        with self.assertRaises(Fund.InsufficientCash) as exc:
+            fund_action2 = do_transfer(
+                self.shop_user, self.shop_user2, delta, note="test transfer2"
+            )
+
+        user_old_cash = self.fund.cash
+        user_old_cash2 = self.fund2.cash
+
+        self.fund.refresh_from_db()
+        self.fund2.refresh_from_db()
+
+        self.assertEquals(self.fund.cash, user_old_cash)
+        self.assertEquals(self.fund2.cash, user_old_cash2)
+
+    def test_withdraw(self):
+
+        user_old_cash = self.fund.cash
+
+        d = to_decimal("1.12")
+        action = do_withdraw(
+            self.shop_user, d, order_id="test_order_id", note="test_withdraw"
+        )
+        self.assertEqual(action.amount, d)
+        self.assertEqual(action.order_id, "test_order_id")
+        self.assertEqual(action.note, "test_withdraw")
+
+        self.fund.refresh_from_db()
+        self.assertEqual(self.fund.cash, user_old_cash - d)
+
+        # test insufficient cash
+        delta = self.fund.cash + to_decimal("0.1")
+        with self.assertRaises(Fund.InsufficientCash) as exc:
+            do_withdraw(
+                self.shop_user, delta, order_id="test_order_id2", note="test_withdraw"
+            )
+
+        user_old_cash = self.fund.cash
+
+        self.fund.refresh_from_db()
+
+        self.assertEquals(self.fund.cash, user_old_cash)
 
     def test_get_qr_code_info(self):
         self.client.authenticate(self.user)
@@ -139,7 +232,7 @@ class WalletTests(JSONWebTokenTestCase):
         )
 
     @FakeRedis("common.utils.get_redis_connection")
-    def test_transfer(self):
+    def test_transfer_api(self):
         self.client.authenticate(self.user)
         gql = """
         mutation _($input: TransferInput!){

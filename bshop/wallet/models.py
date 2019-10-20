@@ -62,9 +62,11 @@ class FundAction(BaseModel, ModelWithExtraInfo):
 
 
 @transaction.atomic
-def do_transfer(from_user, to_user, amount: Decimal, note: str = None):
-    from_fund = from_user.user_funds.get(currency="CNY")
-    to_fund = to_user.user_funds.get(currency="CNY")
+def do_transfer(
+    from_user: ShopUser, to_user: ShopUser, amount: Decimal, note: str = None
+):
+    from_fund = from_user.get_user_fund()
+    to_fund = to_user.get_user_fund()
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
@@ -80,23 +82,28 @@ def do_transfer(from_user, to_user, amount: Decimal, note: str = None):
 
 @transaction.atomic
 def do_deposit(user, amount: Decimal, order_id: str, note: str = None):
-    fund = user.user_funds.get(currency="CNY")
+    fund = user.get_user_fund()
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
     Fund.objects.incr_cash(fund.id, amount)
 
-    action = FundAction.objects.create(to_fund=fund, amount=amount, order_id=order_id)
+    action = FundAction.objects.create(
+        to_fund=fund, amount=amount, order_id=order_id, note=note
+    )
     return action
 
 
 @transaction.atomic
 def do_withdraw(user, amount: Decimal, order_id: str, note: str = None):
-    fund = user.user_funds.get(currency="CNY")
+    fund = user.get_user_fund()
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
+
     Fund.objects.decr_cash(fund.id, amount)
 
-    action = FundAction.objects.create(from_fund=fund, amount=amount, order_id=order_id)
+    action = FundAction.objects.create(
+        from_fund=fund, amount=amount, order_id=order_id, note=note
+    )
     return action

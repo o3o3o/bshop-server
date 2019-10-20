@@ -34,8 +34,13 @@ def to_decimal(v, default="0", digits=8):
         return Decimal(default)
 
 
-def yuan2fen(d: Decimal):
+def yuan2fen(d: Decimal) -> int:
     return int(d * 100)
+
+
+def fen2yuan(d: int) -> Decimal:
+
+    return to_decimal(d / 100)
 
 
 def is_decimal(v):

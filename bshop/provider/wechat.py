@@ -10,7 +10,7 @@ from wechat_django.pay import signals
 from wechat_django.pay.models.orderresult import UnifiedOrderResult, UnifiedOrder
 from wechat_django.models import WeChatApp, WeChatUser
 
-from common.utils import yuan2fen, to_decimal
+from common.utils import yuan2fen, to_decimal, fen2yuan
 from common.schema import LoginProvider
 from provider import BaseProvider
 from user_center.models import ShopUser
@@ -35,10 +35,13 @@ class WeChatProvider(BaseProvider):
         self.app = WeChatApp.objects.get_by_name("liuxiaoge")
         return self.app
 
-    def get_openid(self, auth_code):
+    def get_openid(self, auth_code: str = None, shop_user: ShopUser = None):
         app = self.get_wechat_app()
-        _, data = app.auth(auth_code)
-        return data["openid"]
+        if auth_code:
+            _, data = app.auth(auth_code)
+            return data["openid"]
+        elif shop_user:
+            return shop_user.wechat_id
 
     def create_order(
         self,
@@ -66,6 +69,7 @@ class WeChatProvider(BaseProvider):
 
         prepay = order.prepay(request)
         jsapi_params = order.jsapi_params(prepay["prepay_id"])
+        jsapi_params["order_id"] = out_trade_no
         return jsapi_params
 
     def create_pay_order(self, code: str, amount: Decimal, to_user: ShopUser = None):
@@ -91,14 +95,21 @@ class WeChatProvider(BaseProvider):
         # TODO: sync order state async
         return res
 
-    def order_info(self, order_id):
+    def order_info(self, order_id, openid):
         app = self.get_wechat_app()
         try:
-            order = UnifiedOrder.objects.get(pay=app.pay, out_trade_no=order_id)
+            # TODO: get by open_id
+            order = UnifiedOrder.objects.get(
+                pay=app.pay, out_trade_no=order_id, openid=openid
+            )
         except UnifiedOrder.DoesNotExist:
             return None
 
-        return {"id": order_id, "state": order.trade_state()}
+        return {
+            "id": order_id,
+            "state": order.trade_state(),
+            "amount": fen2yuan(order.total_fee) if order.total_fee else None,
+        }
 
 
 @receiver(signals.order_updated)
@@ -108,7 +119,7 @@ def order_updated(result, order, state, attach, **kwargs):
         logger.info(f"{order} deposit signal, skip for no-success state")
         return
 
-    if FundAction.objects.get(order_id=order.id).exist():
+    if FundAction.objects.filter(order_id=order.id).exists():
         logger.info(f"{order} deposit signal, skip for duplicate trigger")
         return
 

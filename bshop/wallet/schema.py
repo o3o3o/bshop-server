@@ -3,13 +3,14 @@ import logging
 import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
+from django.db.models import Q
 
 from common import exceptions
 from common.schema import LoginProvider, Result, OrderState
 from common.utils import urlencode, AvoidResubmit
 
 from user_center.models import ShopUser
-from wallet.models import do_transfer, FundAction
+from wallet.models import do_transfer, FundAction, Fund
 from provider import get_provider_cls
 
 logger = logging.getLogger(__name__)
@@ -17,13 +18,23 @@ logger = logging.getLogger(__name__)
 
 class Ledger(DjangoObjectType):
     id = graphene.UUID()
+    out = graphene.Boolean()
 
     class Meta:
         model = FundAction
         only_fields = ("amount", "note")
+        order_by = "id"  # FIXME:
 
     def resolve_id(self, info):
         return self.uuid
+
+    def resolve_out(self, info):
+        if info.fund == self.from_fund:
+            return False
+        elif info.fund == self.to_fund:
+            return False
+        else:
+            raise ValueError
 
 
 class CreatePayOrderInput(graphene.InputObjectType):
@@ -118,6 +129,7 @@ class Mutation(graphene.ObjectType):
 class OrderInfo(graphene.ObjectType):
     id = graphene.ID()
     state = graphene.Field(OrderState)
+    amount = graphene.Decimal()
 
 
 class VendorInfo(graphene.ObjectType):
@@ -128,16 +140,46 @@ class VendorInfo(graphene.ObjectType):
     qr = graphene.String()
 
 
+class FundQL(DjangoObjectType):
+    class Meta:
+        model = Fund
+        only_fields = ("cash", "currency")
+        name = "Fund"
+
+
 class Query(graphene.ObjectType):
+    fund = graphene.Field(FundQL)
+    ledger_list = graphene.List(Ledger)
     vendor_receive_pay_qr = graphene.Field(VendorInfo)
     order_info = graphene.Field(
         OrderInfo, provider=graphene.Argument(LoginProvider), order_id=graphene.String()
     )
 
     @login_required
+    def resolve_fund(self, info):
+        shop_user = info.context.user.shop_user
+        try:
+            return Fund.objects.get(shop_user=shop_user)
+        except Fund.DoesNotExist:
+            return FundQL(cash=0, currency="CNY")
+
+    @login_required
+    def resolve_ledger_list(self, info):
+        shop_user = info.context.user.shop_user
+        fund = Fund.objects.get(shop_user=shop_user)
+        setattr(info, "fund", fund)
+
+        return FundAction.objects.filter(Q(from_fund=fund) | Q(to_fund=fund))
+
+    @login_required
     def resolve_order_info(self, info, provider, order_id, **kw):
+        shop_user = info.context.user.shop_user
+
         cls = get_provider_cls(provider)
-        res = cls().order_info(order_id)
+        obj = cls()
+
+        openid = obj.get_openid(shop_user=shop_user)
+        res = obj.order_info(order_id, openid)
         if res:
             return OrderInfo(**res)
         else:

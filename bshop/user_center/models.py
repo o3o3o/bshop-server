@@ -121,3 +121,9 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
         else:
             setattr(self, obj.field, openid)
             self.save(update_fields=[obj.field])
+
+    def get_user_fund(self):
+        from wallet.models import Fund
+
+        fund, _ = Fund.objects.get_or_create(shop_user=self)
+        return fund
