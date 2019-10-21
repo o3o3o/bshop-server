@@ -15,7 +15,7 @@ from common.schema import LoginProvider
 from provider import BaseProvider
 from user_center.models import ShopUser
 from wallet.tasks import sync_wechat_order
-from wallet.models import FundAction, do_deposit, do_transfer
+from wallet.models import FundAction, do_deposit, do_transfer, do_cash_back
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class WeChatProvider(BaseProvider):
 
         prepay = order.prepay(request)
         jsapi_params = order.jsapi_params(prepay["prepay_id"])
-        jsapi_params["order_id"] = out_trade_no
+        jsapi_params["orderId"] = out_trade_no
         return jsapi_params
 
     def create_pay_order(self, code: str, amount: Decimal, to_user: ShopUser = None):
@@ -130,27 +130,24 @@ def order_updated(result, order, state, attach, **kwargs):
     user = ShopUser.objects.get_user_by_openid(provider, order.openid)
 
     amount = to_decimal(order.total_fee / 100)
+    is_transfer = order.ext_info and order.ext_info.get("to_user_id")
+
+    if is_transfer:
+        to_user_id = order.ext_info["to_user_id"]
+        to_user = ShopUser.objects.get(id=to_user_id)
+        note = "deposit&buy"
+    else:
+        note = f"user:{user.id} deposit"
 
     # Ensure cocurrent callback in 10 seconds
     with con.lock(lock_name, timeout=10):
-        if order.ext_info and order.ext_info.get("to_user_id"):
-            # transfer
-            to_user_id = order.ext_info["to_user_id"]
-            to_user = ShopUser.objects.get(id=to_user_id)
-            note = "deposit&buy"
-
-            with transaction.atomic():
-                do_deposit(
-                    user,
-                    to_decimal(order.total_fee / 100),
-                    order_id=order.id,
-                    note=note,
-                )
+        with transaction.atomic():
+            if is_transfer:
+                do_deposit(user, amount, order_id=order.id, note=note)
                 do_transfer(user, to_user, amount, note=note)
-        else:
-            # deposit
-            note = f"user:{user.id} deposit"
-            # TODO: check order_id lock?
-            do_deposit(user, amount, order_id=order.id, note=note)
+            else:
+                do_deposit(user, amount, order_id=order.id, note=note)
+
+            do_cash_back(user, amount, order_id=order.id, note=note)
 
     logger.info(f"{order} deposit success: {note}")

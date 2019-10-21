@@ -31,7 +31,11 @@ def to_decimal(v, default="0", digits=8):
     try:
         return floor_decimal(Decimal(v), digits=digits)
     except decimal.InvalidOperation:
-        return Decimal(default)
+        return Decimal(default).normalize()
+
+
+def decimal2str(d: Decimal) -> str:
+    return str(d.normalize())
 
 
 def yuan2fen(d: Decimal) -> int:
@@ -39,7 +43,6 @@ def yuan2fen(d: Decimal) -> int:
 
 
 def fen2yuan(d: int) -> Decimal:
-
     return to_decimal(d / 100)
 
 

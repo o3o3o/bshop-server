@@ -1,9 +1,11 @@
 import logging
 from decimal import Decimal
+from datetime import datetime, timedelta
 from django.db import models, transaction
+from django.utils.functional import cached_property
 
 from user_center.models import ShopUser
-from common.utils import d0
+from common.utils import d0, utc_now, to_decimal
 from common.base_models import BaseModel, DecimalField, ModelWithExtraInfo
 
 logger = logging.getLogger(__name__)
@@ -28,7 +30,6 @@ class FundManager(models.Manager):
         return self.get(id=fund_id)
 
 
-# Create your models here.
 class Fund(BaseModel, ModelWithExtraInfo):
     shop_user = models.ForeignKey(
         ShopUser, models.CASCADE, related_name="user_funds", db_index=True
@@ -41,6 +42,68 @@ class Fund(BaseModel, ModelWithExtraInfo):
 
     class InsufficientCash(Exception):
         pass
+
+    @cached_property
+    def total(self):
+        return self.cash + self.hold
+
+    @cached_property
+    def hold(self):
+        return HoldFund.objects.total_amount(self)
+
+
+class HoldFundManager(models.Manager):
+    def incr_hold(self, fund: Fund, amount: Decimal, expired_at: datetime):
+        return self.create(fund=fund, amount=amount, expired_at=expired_at)
+
+    def decr_hold(self, fund: Fund, amount: Decimal):
+        with transaction.atomic():
+            hold_funds = (
+                self.select_for_update().filter(fund=fund).order_by("-expired_at")
+            )
+
+            for cbf in hold_funds:
+                if cbf.amount >= amount:
+                    cbf.amount -= amount
+                    amount = d0
+                else:
+                    # deduct the amount and try next
+                    cbf.amount = d0
+                    amount -= cbf.amount
+
+                if cbf.amount == d0:
+                    cbf.delete()
+                else:
+                    cbf.save(update_fields=["amount"])
+
+                if amount == d0:
+                    return d0
+
+            return amount
+
+    def total_amount(self, fund: Fund):
+        return (
+            self.filter(fund=fund).aggregate(total=models.Sum("amount"))["total"] or d0
+        )
+
+
+class HoldFund(BaseModel, ModelWithExtraInfo):
+    """ Hold cash for cash back """
+
+    fund = models.ForeignKey(
+        Fund, models.CASCADE, related_name="hold_funds", db_index=True
+    )
+
+    amount = DecimalField()
+    expired_at = models.DateTimeField()
+    order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+    objects = HoldFundManager()
+
+    def unhold(self):
+        # period backend to check expired_at to move into fund
+        Fund.objects.incr_cash(self.fund_id, self.amount)
+        self.delete()
+        # TODO: add into fund action?
 
 
 class FundActionManager(models.Manager):
@@ -71,7 +134,15 @@ def do_transfer(
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
-    Fund.objects.decr_cash(from_fund.id, amount)
+    # TODO: use cashBackFund?
+    remain_amount = HoldFund.objects.decr_hold(from_fund, amount)
+
+    if remain_amount > d0:
+        Fund.objects.decr_cash(from_fund.id, remain_amount)
+
+    if remain_amount < d0:
+        raise AssertionError("Should not happen here")
+
     Fund.objects.incr_cash(to_fund.id, amount)
 
     action = FundAction.objects.create(
@@ -81,7 +152,7 @@ def do_transfer(
 
 
 @transaction.atomic
-def do_deposit(user, amount: Decimal, order_id: str, note: str = None):
+def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None):
     fund = user.get_user_fund()
 
     if amount <= d0:
@@ -95,7 +166,7 @@ def do_deposit(user, amount: Decimal, order_id: str, note: str = None):
 
 
 @transaction.atomic
-def do_withdraw(user, amount: Decimal, order_id: str, note: str = None):
+def do_withdraw(user: ShopUser, amount: Decimal, order_id: str, note: str = None):
     fund = user.get_user_fund()
 
     if amount <= d0:
@@ -107,3 +178,15 @@ def do_withdraw(user, amount: Decimal, order_id: str, note: str = None):
         from_fund=fund, amount=amount, order_id=order_id, note=note
     )
     return action
+
+
+def do_cash_back(
+    user: ShopUser, amount: Decimal, order_id: str = None, note: str = None
+):
+    # TODO more cash back stragety
+    if amount <= to_decimal("1000"):
+        return
+
+    # FIXME:
+    fund = user.get_user_fund()
+    HoldFund.objects.incr_hold(fund, amount, expired_at=utc_now() + timedelta(years=1))

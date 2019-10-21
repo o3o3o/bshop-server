@@ -8,6 +8,7 @@ from django.db.models import Q
 from common import exceptions
 from common.schema import LoginProvider, Result, OrderState
 from common.utils import urlencode, AvoidResubmit
+from gql import type as gtype
 
 from user_center.models import ShopUser
 from wallet.models import do_transfer, FundAction, Fund
@@ -40,7 +41,7 @@ class Ledger(DjangoObjectType):
 class CreatePayOrderInput(graphene.InputObjectType):
     provider = graphene.Field(LoginProvider, required=True)
     code = graphene.String()
-    amount = graphene.Decimal(required=True)
+    amount = gtype.Decimal(required=True)
     to = graphene.UUID()
     request_id = graphene.UUID(required=True)
 
@@ -78,7 +79,7 @@ class CreatePayOrder(graphene.Mutation):
 
 class TransferInput(graphene.InputObjectType):
     to = graphene.UUID(required=True)
-    amount = graphene.Decimal(required=True)
+    amount = gtype.Decimal(required=True)
     note = graphene.String()
     payment_password = graphene.String(required=True)
     request_id = graphene.UUID(required=True)
@@ -129,7 +130,7 @@ class Mutation(graphene.ObjectType):
 class OrderInfo(graphene.ObjectType):
     id = graphene.ID()
     state = graphene.Field(OrderState)
-    amount = graphene.Decimal()
+    amount = gtype.Decimal()
 
 
 class VendorInfo(graphene.ObjectType):
@@ -141,10 +142,21 @@ class VendorInfo(graphene.ObjectType):
 
 
 class FundQL(DjangoObjectType):
+    total = gtype.Decimal()
+    cash = gtype.Decimal()
+    hold = gtype.Decimal()
+
     class Meta:
         model = Fund
         only_fields = ("cash", "currency")
         name = "Fund"
+
+    def resolve_total(self, info):
+
+        return self.total
+
+    def resolve_hold(self, info):
+        return self.hold
 
 
 class Query(graphene.ObjectType):

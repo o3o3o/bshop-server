@@ -11,10 +11,10 @@ from django_fakeredis import FakeRedis
 from wechat_django.pay.models import WeChatPay  # , UnifiedOrder
 from wechat_django.models import WeChatApp
 
-from common.utils import ordered_dict_2_dict, urlencode, to_decimal
+from common.utils import ordered_dict_2_dict, urlencode, to_decimal, decimal2str
 from provider.wechat import WeChatProvider
 from user_center.factory import ShopUserFactory
-from wallet.factory import FundFactory
+from wallet.factory import FundFactory, HoldFundFactory
 from wallet.models import Fund, FundAction, do_deposit, do_transfer, do_withdraw
 
 
@@ -40,10 +40,12 @@ class WalletTests(JSONWebTokenTestCase):
         self.shop_user = ShopUserFactory()
         self.user = self.shop_user.user
         self.fund = FundFactory(shop_user=self.shop_user)
+        self.hold_fund = HoldFundFactory(fund=self.fund)
 
         self.shop_user2 = ShopUserFactory(is_vendor=True)
         self.user2 = self.shop_user2.user
         self.fund2 = FundFactory(shop_user=self.shop_user2)
+        self.hold_fund2 = HoldFundFactory(fund=self.fund2)
 
         self.miniprogram = WeChatApp.objects.get_by_name("miniprogram")
         self.request = RequestFactory()
@@ -109,13 +111,20 @@ class WalletTests(JSONWebTokenTestCase):
         gql = """
         query {
           fund{
+            total
             cash
+            hold
             currency
           }
         }"""
         data = self.client.execute(gql)
         self.assertIsNone(data.errors)
-        expected = {"cash": float(self.fund.cash), "currency": "CNY"}
+        expected = {
+            "total": decimal2str(self.fund.cash + self.hold_fund.amount),
+            "cash": decimal2str(self.fund.cash),
+            "hold": decimal2str(self.fund.hold),
+            "currency": "CNY",
+        }
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
 
         new_add_cash = to_decimal("1.2")
@@ -127,7 +136,12 @@ class WalletTests(JSONWebTokenTestCase):
 
         data = self.client.execute(gql)
         self.assertIsNone(data.errors)
-        expected = {"cash": float(self.fund.cash), "currency": "CNY"}
+        expected = {
+            "total": decimal2str(self.fund.cash + self.hold_fund.amount),
+            "cash": decimal2str(self.fund.cash),
+            "hold": decimal2str(self.fund.hold),
+            "currency": "CNY",
+        }
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
 
     def test_transfer(self):
@@ -147,10 +161,8 @@ class WalletTests(JSONWebTokenTestCase):
 
         # test insufficient cash
         delta = self.fund.cash + to_decimal("0.1")
-        with self.assertRaises(Fund.InsufficientCash) as exc:
-            fund_action2 = do_transfer(
-                self.shop_user, self.shop_user2, delta, note="test transfer2"
-            )
+        with self.assertRaises(Fund.InsufficientCash):
+            do_transfer(self.shop_user, self.shop_user2, delta, note="test transfer2")
 
         user_old_cash = self.fund.cash
         user_old_cash2 = self.fund2.cash
@@ -178,7 +190,7 @@ class WalletTests(JSONWebTokenTestCase):
 
         # test insufficient cash
         delta = self.fund.cash + to_decimal("0.1")
-        with self.assertRaises(Fund.InsufficientCash) as exc:
+        with self.assertRaises(Fund.InsufficientCash):
             do_withdraw(
                 self.shop_user, delta, order_id="test_order_id2", note="test_withdraw"
             )
