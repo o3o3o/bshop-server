@@ -29,3 +29,9 @@ def sync_wechat_order(order_id):
         raise NoSuccess
     else:
         logger.info(f"Sync {order} successfully!")
+
+
+@app.task
+def check_expired_holdfund():
+    # TODO: check aciton with celery  ETA?
+    HoldFund.objects.expired_unhold()

@@ -100,6 +100,12 @@ class HoldFundManager(models.Manager):
             self.filter(fund=fund).aggregate(total=models.Sum("amount"))["total"] or d0
         )
 
+    def expired_unhold(self):
+        with transaction.atomic():
+            hold_funds = self.select_for_update().filter(expired_at__lte=utc_now())
+            for cbf in hold_funds:
+                cbf.unhold()
+
 
 class HoldFund(BaseModel, ModelWithExtraInfo):
     """ Hold cash for cash back """
@@ -114,10 +120,9 @@ class HoldFund(BaseModel, ModelWithExtraInfo):
     objects = HoldFundManager()
 
     def unhold(self):
-        # period backend to check expired_at to move into fund
-        Fund.objects.incr_cash(self.fund_id, self.amount)
         self.delete()
-        # TODO: add into fund action?
+        Fund.objects.incr_cash(self.fund_id, self.amount)
+        logger.info(f"Unhold for fund {self.fund_id} amount: {self.amount}")
 
 
 class FundActionManager(models.Manager):

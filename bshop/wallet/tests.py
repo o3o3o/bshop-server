@@ -11,11 +11,26 @@ from django_fakeredis import FakeRedis
 from wechat_django.pay.models import WeChatPay  # , UnifiedOrder
 from wechat_django.models import WeChatApp
 
-from common.utils import ordered_dict_2_dict, urlencode, to_decimal, decimal2str
+from common.utils import (
+    ordered_dict_2_dict,
+    urlencode,
+    to_decimal,
+    decimal2str,
+    utc_now,
+    d0,
+)
 from provider.wechat import WeChatProvider
+from user_center.models import ShopUser
 from user_center.factory import ShopUserFactory
 from wallet.factory import FundFactory, HoldFundFactory
-from wallet.models import Fund, FundAction, do_deposit, do_transfer, do_withdraw
+from wallet.models import (
+    Fund,
+    HoldFund,
+    FundAction,
+    do_deposit,
+    do_transfer,
+    do_withdraw,
+)
 
 
 class WalletTests(JSONWebTokenTestCase):
@@ -59,6 +74,9 @@ class WalletTests(JSONWebTokenTestCase):
         self.user2.delete()
         self.fund2.delete()
 
+        ShopUser.objects.all().delete()
+        Fund.objects.all().delete()
+        HoldFund.objects.all().delete()
         FundAction.objects.all().delete()
 
     def test_pre_create_order(self):
@@ -144,6 +162,20 @@ class WalletTests(JSONWebTokenTestCase):
         }
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
 
+    def test_unhold(self):
+        hold_fund = HoldFundFactory(expired_at=utc_now())
+        fund = hold_fund.fund
+
+        old_amount = fund.amount_d
+
+        HoldFund.objects.expired_unhold()
+
+        fund.refresh_from_db()
+
+        self.assertEquals(fund.total, old_amount["total"])
+        self.assertEquals(fund.cash, old_amount["cash"] + old_amount["hold"])
+        self.assertEquals(fund.hold, d0)
+
     def test_transfer(self):
         old_amount = self.fund.amount_d
         old_amount2 = self.fund2.amount_d
@@ -179,6 +211,52 @@ class WalletTests(JSONWebTokenTestCase):
 
         self.assertEquals(self.fund.amount_d, old_amount)
         self.assertEquals(self.fund2.amount_d, old_amount2)
+
+    @FakeRedis("common.utils.get_redis_connection")
+    def test_transfer_api(self):
+        self.client.authenticate(self.user)
+        gql = """
+        mutation _($input: TransferInput!){
+          transfer(input: $input){
+            success
+          }
+        }"""
+        test_request_uuid = uuid.uuid4().hex
+        variables = {
+            "input": {
+                "to": str(self.shop_user2.uuid),
+                "amount": "0.1",
+                "note": "test transfer",
+                "requestId": test_request_uuid,
+                "paymentPassword": "123456",
+            }
+        }
+        # test with not set payment password
+        data = self.client.execute(gql, variables)
+        self.assertIsNotNone(data.errors)
+        self.assertEquals("need_set_payment_password", data.errors[0].message)
+
+        # test resbumitted
+        data = self.client.execute(gql, variables)
+        self.assertIsNotNone(data.errors)
+        self.assertEquals("resubmitted", data.errors[0].message)
+
+        # test true paymentpassword
+        self.shop_user.set_payment_password("654321")
+        variables["input"]["paymentPassword"] = "654321"
+        variables["input"]["requestId"] = uuid.uuid4().hex
+
+        old_amount = self.fund.amount_d
+        old_amount2 = self.fund2.amount_d
+
+        data = self.client.execute(gql, variables)
+        self.assertIsNone(data.errors)
+
+        self.fund2.refresh_from_db()
+        self.fund.refresh_from_db()
+
+        self.assertEquals(self.fund.total, old_amount["total"] - to_decimal("0.1"))
+        self.assertEquals(self.fund2.cash, old_amount2["cash"] + to_decimal("0.1"))
 
     def test_withdraw(self):
 
@@ -249,49 +327,3 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertDictEqual(
             ordered_dict_2_dict(data.data["vendorReceivePayQr"]), expected
         )
-
-    @FakeRedis("common.utils.get_redis_connection")
-    def test_transfer_api(self):
-        self.client.authenticate(self.user)
-        gql = """
-        mutation _($input: TransferInput!){
-          transfer(input: $input){
-            success
-          }
-        }"""
-        test_request_uuid = uuid.uuid4().hex
-        variables = {
-            "input": {
-                "to": str(self.shop_user2.uuid),
-                "amount": "0.1",
-                "note": "test transfer",
-                "requestId": test_request_uuid,
-                "paymentPassword": "123456",
-            }
-        }
-        # test with not set payment password
-        data = self.client.execute(gql, variables)
-        self.assertIsNotNone(data.errors)
-        self.assertEquals("need_set_payment_password", data.errors[0].message)
-
-        # test resbumitted
-        data = self.client.execute(gql, variables)
-        self.assertIsNotNone(data.errors)
-        self.assertEquals("resubmitted", data.errors[0].message)
-
-        # test true paymentpassword
-        self.shop_user.set_payment_password("654321")
-        variables["input"]["paymentPassword"] = "654321"
-        variables["input"]["requestId"] = uuid.uuid4().hex
-
-        data = self.client.execute(gql, variables)
-        self.assertIsNone(data.errors)
-
-        old_cash = self.fund.cash
-        old_cash2 = self.fund2.cash
-
-        self.fund2.refresh_from_db()
-        self.fund.refresh_from_db()
-
-        self.assertEquals(self.fund.cash, old_cash - to_decimal("0.1"))
-        self.assertEquals(self.fund2.cash, old_cash2 + to_decimal("0.1"))
