@@ -145,33 +145,40 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
 
     def test_transfer(self):
+        old_amount = self.fund.amount_d
+        old_amount2 = self.fund2.amount_d
         delta = to_decimal("2.3")
+
         fund_action = do_transfer(
             self.shop_user, self.shop_user2, delta, note="test transfer"
         )
-        user_old_cash = self.fund.cash
-        user_old_cash2 = self.fund2.cash
 
         self.fund.refresh_from_db()
         self.fund2.refresh_from_db()
 
-        self.assertEquals(self.fund.cash, user_old_cash - delta)
-        self.assertEquals(self.fund2.cash, user_old_cash2 + delta)
+        self.assertEquals(self.fund.total, old_amount["total"] - delta)
+        self.assertEquals(self.fund.hold, old_amount["hold"] - delta)
+        self.assertEquals(self.fund.cash, old_amount["cash"])
+
+        self.assertEquals(self.fund2.total, old_amount2["total"] + delta)
+        self.assertEquals(self.fund2.cash, old_amount2["cash"] + delta)
+        self.assertEquals(self.fund2.hold, old_amount2["hold"])
+
         self.assertEquals(fund_action.note, "test transfer")
 
         # test insufficient cash
-        delta = self.fund.cash + to_decimal("0.1")
+        old_amount = self.fund.amount_d
+        old_amount2 = self.fund2.amount_d
+
+        delta = self.fund.total + to_decimal("0.1")
         with self.assertRaises(Fund.InsufficientCash):
             do_transfer(self.shop_user, self.shop_user2, delta, note="test transfer2")
-
-        user_old_cash = self.fund.cash
-        user_old_cash2 = self.fund2.cash
 
         self.fund.refresh_from_db()
         self.fund2.refresh_from_db()
 
-        self.assertEquals(self.fund.cash, user_old_cash)
-        self.assertEquals(self.fund2.cash, user_old_cash2)
+        self.assertEquals(self.fund.amount_d, old_amount)
+        self.assertEquals(self.fund2.amount_d, old_amount2)
 
     def test_withdraw(self):
 

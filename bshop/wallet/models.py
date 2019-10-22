@@ -6,7 +6,12 @@ from django.utils.functional import cached_property
 
 from user_center.models import ShopUser
 from common.utils import d0, utc_now, to_decimal
-from common.base_models import BaseModel, DecimalField, ModelWithExtraInfo
+from common.base_models import (
+    BaseModel,
+    DecimalField,
+    ModelWithExtraInfo,
+    RefreshFromDbInvalidatesCachedPropertiesMixin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +31,14 @@ class FundManager(models.Manager):
                 "fund %s decr cash %s, cnt=%s, InsufficientCash", fund_id, amount, cnt
             )
             raise self.model.InsufficientCash()
-        logging.info("fund %s decr cash %s, cnt=%s", fund_id, amount, cnt)
+
+        logger.info("fund %s decr cash %s, cnt=%s", fund_id, amount, cnt)
         return self.get(id=fund_id)
 
 
-class Fund(BaseModel, ModelWithExtraInfo):
+class Fund(
+    RefreshFromDbInvalidatesCachedPropertiesMixin, BaseModel, ModelWithExtraInfo
+):
     shop_user = models.ForeignKey(
         ShopUser, models.CASCADE, related_name="user_funds", db_index=True
     )
@@ -51,6 +59,10 @@ class Fund(BaseModel, ModelWithExtraInfo):
     def hold(self):
         return HoldFund.objects.total_amount(self)
 
+    @property
+    def amount_d(self):
+        return {"total": self.total, "hold": self.hold, "cash": self.cash}
+
 
 class HoldFundManager(models.Manager):
     def incr_hold(self, fund: Fund, amount: Decimal, expired_at: datetime):
@@ -65,9 +77,11 @@ class HoldFundManager(models.Manager):
             for cbf in hold_funds:
                 if cbf.amount >= amount:
                     cbf.amount -= amount
+                    logger.info(f"holdfund {cbf.id} decr hold {amount}")
                     amount = d0
                 else:
                     # deduct the amount and try next
+                    logger.info(f"holdfund {cbf.id} decr hold {cbf.amount}")
                     cbf.amount = d0
                     amount -= cbf.amount
 
@@ -134,7 +148,7 @@ def do_transfer(
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
-    # TODO: use cashBackFund?
+    # First, we try to deduct from the HoldFund, if fail then deduct from Fund
     remain_amount = HoldFund.objects.decr_hold(from_fund, amount)
 
     if remain_amount > d0:
