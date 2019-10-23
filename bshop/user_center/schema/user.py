@@ -17,6 +17,7 @@ class BaseUserQL(object):
     nickname = graphene.String()
     last_name = graphene.String()
     first_name = graphene.String()
+    has_payment_password = graphene.Boolean(default_value=False)
 
     def __init_subclass__(cls, *arg, **kw):
         super().__init_subclass__(*arg, **kw)
@@ -24,7 +25,7 @@ class BaseUserQL(object):
         def gen_resolve(key):
             return lambda self, info: getattr(self, key)
 
-        for k in ("last_name", "first_name", "avatar"):
+        for k in ("last_name", "first_name", "avatar", "has_payment_password"):
             setattr(cls, f"resolve_{k}", gen_resolve(k))
 
     def resolve_id(self, info):

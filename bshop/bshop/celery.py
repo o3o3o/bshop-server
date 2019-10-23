@@ -22,4 +22,4 @@ app.conf.beat_schedule = {
     }
 }
 
-app.conf.task_routes = {"wallet.tasks.*": {"queue": "wallet"}}
+# app.conf.task_routes = {"wallet.tasks.*": {"queue": "wallet"}}

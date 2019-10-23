@@ -7,7 +7,7 @@ from django.db.models import Q
 
 from common import exceptions
 from common.schema import LoginProvider, Result, OrderState
-from common.utils import urlencode, AvoidResubmit
+from common.utils import urlencode, AvoidResubmit, d0
 from gql import type as gtype
 
 from user_center.models import ShopUser
@@ -142,9 +142,9 @@ class VendorInfo(graphene.ObjectType):
 
 
 class FundQL(DjangoObjectType):
-    total = gtype.Decimal()
-    cash = gtype.Decimal()
-    hold = gtype.Decimal()
+    total = gtype.Decimal(default_value=d0)
+    cash = gtype.Decimal(default_value=d0)
+    hold = gtype.Decimal(default_value=d0)
 
     class Meta:
         model = Fund
@@ -152,7 +152,6 @@ class FundQL(DjangoObjectType):
         name = "Fund"
 
     def resolve_total(self, info):
-
         return self.total
 
     def resolve_hold(self, info):
@@ -173,7 +172,7 @@ class Query(graphene.ObjectType):
         try:
             return Fund.objects.get(shop_user=shop_user)
         except Fund.DoesNotExist:
-            return FundQL(cash=0, currency="CNY")
+            return FundQL(currency="CNY")
 
     @login_required
     def resolve_ledger_list(self, info):

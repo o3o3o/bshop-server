@@ -65,7 +65,6 @@ class WeChatProvider(BaseProvider):
             openid=openid,
             ext_info=ext_info,
         )
-        sync_wechat_order.apply_async(args=[order.id], countdown=3, expires=7200)
 
         prepay = order.prepay(request)
         jsapi_params = order.jsapi_params(prepay["prepay_id"])
@@ -104,6 +103,8 @@ class WeChatProvider(BaseProvider):
             )
         except UnifiedOrder.DoesNotExist:
             return None
+
+        sync_wechat_order.apply_async(args=[order.id], expires=60)
 
         return {
             "id": order_id,

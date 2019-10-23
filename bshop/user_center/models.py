@@ -102,6 +102,8 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
         res = check_password(password, self.payment_password)
         if res is False:
             key = "payment_password_retries"
+            if not self.extra_info:
+                self.extra_info = {}
             cnt = self.extra_info.get(key, 0)
             cnt += 1
             self.extra_info[key] = cnt

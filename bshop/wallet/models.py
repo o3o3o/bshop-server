@@ -48,6 +48,9 @@ class Fund(
 
     objects = FundManager()
 
+    def __str__(self):
+        return f"fund:{self.id} {self.shop_user.phone}"
+
     class InsufficientCash(Exception):
         pass
 

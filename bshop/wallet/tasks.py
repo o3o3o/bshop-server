@@ -11,7 +11,8 @@ class NoSuccess(Exception):
     pass
 
 
-@app.task(autoretry_for=(NoSuccess,), max_retries=10, retry_backoff=2)
+# https://celery.readthedocs.io/en/latest/userguide/tasks.html?highlight=retry_backof#Task.retry_backoff
+@app.task(autoretry_for=(NoSuccess,), max_retries=3, default_retry_delay=1)
 def sync_wechat_order(order_id):
     order = UnifiedOrder.objects.get(id=order_id)
 
@@ -23,9 +24,8 @@ def sync_wechat_order(order_id):
         return
 
     res = order.sync()
-    print(res)
+    logger.debug(res)
     if order.trade_state() != UnifiedOrderResult.State.SUCCESS:
-        print("retry...")
         raise NoSuccess
     else:
         logger.info(f"Sync {order} successfully!")

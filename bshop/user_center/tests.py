@@ -7,6 +7,7 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from graphql_jwt.testcases import JSONWebTokenClient
 
 # from user_center.models import ShopUser
+from provider.wechat import WeChatProvider
 from user_center.factory import ShopUserFactory
 
 
@@ -104,8 +105,8 @@ class UserTests(TestCase):
 
         """
         variables_bind_account = {"provider": "WECHAT", "authCode": "test_auth_code"}
-        with patch("user_center.models.get_open_id") as mock_get_open_id:
-            mock_get_open_id.return_value = "test_open_id"
+        with patch.object(WeChatProvider, "get_openid") as mock_get_openid:
+            mock_get_openid.return_value = "test_open_id"
             data = self.client.execute(gql_bind_account, variables_bind_account)
             self.assertIsNotNone(data.errors)
 
@@ -114,7 +115,7 @@ class UserTests(TestCase):
 
             data = self.client.execute(gql_bind_account, variables_bind_account)
 
-            mock_get_open_id.assert_called_with("WECHAT", "test_auth_code")
+            mock_get_openid.assert_called_with("test_auth_code")
 
             self.assertIsNone(data.errors)
 
@@ -211,12 +212,35 @@ class UserTests(TestCase):
           me {
             id
             phone
+            hasPaymentPassword
           }
         }"""
 
         data = self.client.execute(gql)
         self.assertIsNone(data.errors)
         self.assertEquals(data.data["me"]["phone"], self.user.shop_user.phone)
+        self.assertEquals(data.data["me"]["hasPaymentPassword"], False)
+
+        self.shop_user.set_payment_password("654321")
+
+        data = self.client.execute(gql)
+        self.assertIsNone(data.errors)
+        self.assertEquals(data.data["me"]["phone"], self.user.shop_user.phone)
+        self.assertEquals(data.data["me"]["hasPaymentPassword"], True)
+
+    def test_payment_password(self):
+        self.client.authenticate(self.user)
+        gql = """
+            mutation ($password: String!){
+                setPaymentPassword(password: $password){
+                    success
+                }
+            }
+        """
+        variables = {"password": "312546"}
+        data = self.client.execute(gql, variables)
+        self.assertIsNone(data.errors)
+        self.assertEquals(data.data["setPaymentPassword"]["success"], True)
 
     def test_update_userinfo(self):
         self.client.authenticate(self.user)

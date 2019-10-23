@@ -241,8 +241,16 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertIsNotNone(data.errors)
         self.assertEquals("resubmitted", data.errors[0].message)
 
-        # test true paymentpassword
         self.shop_user.set_payment_password("654321")
+
+        # test wrong paymentpassword
+        variables["input"]["paymentPassword"] = "123456"
+        variables["input"]["requestId"] = uuid.uuid4().hex
+        data = self.client.execute(gql, variables)
+        self.assertIsNotNone(data.errors)
+        self.assertEquals("wrong_password", data.errors[0].message)
+
+        # test true paymentpassword
         variables["input"]["paymentPassword"] = "654321"
         variables["input"]["requestId"] = uuid.uuid4().hex
 

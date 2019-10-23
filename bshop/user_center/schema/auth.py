@@ -186,10 +186,9 @@ class SetPaymentPassword(graphene.Mutation):
 
     @login_required
     def mutate(self, info, password, **kw):
-        # TODO: payment password
         shop_user = info.context.user.shop_user
         if shop_user.has_payment_password:
-            raise exceptions.GQLError("already_exist")
+            raise exceptions.GQLError("already_exist_payment_password")
 
         shop_user.set_payment_password(password)
 
