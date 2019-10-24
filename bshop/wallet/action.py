@@ -23,7 +23,7 @@ def do_transfer(
         raise ValueError("Invalid minus amount")
 
     transfer = FundTransfer.objects.create(
-        from_fund=from_fund, to_fund=to_fund, amount=amount, note=note
+        from_fund=from_fund, to_fund=to_fund, amount=amount, note=note, type="TRANSFER"
     )
 
     # First, we try to deduct from the HoldFund, if fail then deduct from Fund
@@ -52,7 +52,7 @@ def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None)
         raise ValueError("Invalid minus amount")
 
     transfer = FundTransfer.objects.create(
-        to_fund=fund, amount=amount, order_id=order_id, note=note
+        to_fund=fund, amount=amount, order_id=order_id, note=note, type="DEPOSIT"
     )
 
     new_fund = Fund.objects.incr_cash(fund.id, amount)
@@ -70,7 +70,7 @@ def do_withdraw(user: ShopUser, amount: Decimal, order_id: str, note: str = None
         raise ValueError("Invalid minus amount")
 
     transfer = FundTransfer.objects.create(
-        from_fund=fund, amount=amount, order_id=order_id, note=note
+        from_fund=fund, amount=amount, order_id=order_id, note=note, type="WITHDRAW"
     )
 
     new_fund = Fund.objects.decr_cash(fund.id, amount)
@@ -94,8 +94,8 @@ def do_cash_back(
     fund = user.get_user_fund()
 
     note = f"cash_back: {amount}"
-    transfer = FundAction.objects.create(
-        to_fund=fund, amount=amount, order_id=order_id, note=note
+    transfer = FundTransfer.objects.create(
+        to_fund=fund, amount=amount, order_id=order_id, note=note, type="CASHBACK"
     )
 
     HoldFund.objects.incr_hold(
