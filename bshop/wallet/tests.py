@@ -23,14 +23,9 @@ from provider.wechat import WeChatProvider
 from user_center.models import ShopUser
 from user_center.factory import ShopUserFactory
 from wallet.factory import FundFactory, HoldFundFactory
-from wallet.models import (
-    Fund,
-    HoldFund,
-    FundAction,
-    do_deposit,
-    do_transfer,
-    do_withdraw,
-)
+
+from wallet.models import Fund, HoldFund, FundAction
+from wallet.action import do_deposit, do_transfer, do_withdraw
 
 
 class WalletTests(JSONWebTokenTestCase):

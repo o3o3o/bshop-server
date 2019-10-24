@@ -11,7 +11,8 @@ from common.utils import urlencode, AvoidResubmit, d0
 from gql import type as gtype
 
 from user_center.models import ShopUser
-from wallet.models import do_transfer, FundAction, Fund
+from wallet.models import FundAction, Fund
+from wallet.action import do_transfer
 from provider import get_provider_cls
 
 logger = logging.getLogger(__name__)

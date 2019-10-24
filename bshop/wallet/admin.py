@@ -1,5 +1,5 @@
 from django.contrib import admin
-from wallet.models import Fund, HoldFund
+from wallet.models import Fund, HoldFund, FundTransfer, FundAction
 
 
 @admin.register(Fund)
@@ -20,3 +20,30 @@ class HoldFundAdmin(admin.ModelAdmin):
         "updated_at",
     )
     search_fields = ["fund__shop_user__phone", "fund__shop_user__user__username"]
+
+
+@admin.register(FundAction)
+class FundActionAdmin(admin.ModelAdmin):
+    list_display = ("fund", "transfer", "balance", "created_at", "updated_at")
+    search_fields = ["fund__shop_user__phone", "fund__shop_user__user__username"]
+
+
+@admin.register(FundTransfer)
+class FundTransferAdmin(admin.ModelAdmin):
+    list_display = (
+        "from_fund",
+        "to_fund",
+        "amount",
+        "status",
+        "type",
+        "note",
+        "order_id",
+        "created_at",
+        "updated_at",
+    )
+    search_fields = [
+        "from_fund__shop_user__phone",
+        "from_fund__shop_user__user__username",
+        "to_fund__shop_user__phone",
+        "to_fund__shop_user__user__username",
+    ]

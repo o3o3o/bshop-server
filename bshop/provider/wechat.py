@@ -15,7 +15,8 @@ from common.schema import LoginProvider
 from provider import BaseProvider
 from user_center.models import ShopUser
 from wallet.tasks import sync_wechat_order
-from wallet.models import FundAction, do_deposit, do_transfer, do_cash_back
+from wallet.models import FundAction
+from wallet.action import do_deposit, do_transfer, do_withdraw
 
 
 logger = logging.getLogger(__name__)
