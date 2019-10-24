@@ -18,6 +18,7 @@ class BaseUserQL(object):
     last_name = graphene.String()
     first_name = graphene.String()
     has_payment_password = graphene.Boolean(default_value=False)
+    is_vendor = graphene.Boolean(default_value=False)
 
     def __init_subclass__(cls, *arg, **kw):
         super().__init_subclass__(*arg, **kw)
@@ -40,13 +41,11 @@ class User(BaseUserQL, DjangoObjectType):
 
 class Me(BaseUserQL, DjangoObjectType):
     phone = graphene.String(required=True)
+    is_vendor = graphene.Boolean()
 
     class Meta:
         model = ShopUser
-        only_fields = ("",)
-
-    def resolve_phone(self, info):
-        return self.phone
+        only_fields = ("is_vendor", "phone")
 
 
 class UpdateUserInfoInput(graphene.InputObjectType):
