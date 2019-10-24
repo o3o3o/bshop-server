@@ -3,6 +3,7 @@ from bshop.celery import app
 from wechat_django.pay.models import UnifiedOrder, UnifiedOrderResult
 
 from common.utils import utc_now
+from wallet.models import HoldFund
 
 logger = logging.getLogger(__name__)
 

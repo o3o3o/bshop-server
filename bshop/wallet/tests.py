@@ -181,7 +181,7 @@ class WalletTests(JSONWebTokenTestCase):
         old_amount2 = self.fund2.amount_d
         delta = to_decimal("2.3")
 
-        fund_action = do_transfer(
+        transfer = do_transfer(
             self.shop_user, self.shop_user2, delta, note="test transfer"
         )
 
@@ -196,7 +196,7 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertEquals(self.fund2.cash, old_amount2["cash"] + delta)
         self.assertEquals(self.fund2.hold, old_amount2["hold"])
 
-        self.assertEquals(fund_action.note, "test transfer")
+        self.assertEquals(transfer.note, "test transfer")
 
         # test insufficient cash
         old_amount = self.fund.amount_d
@@ -271,12 +271,12 @@ class WalletTests(JSONWebTokenTestCase):
         user_old_cash = self.fund.cash
 
         d = to_decimal("1.12")
-        action = do_withdraw(
+        transfer = do_withdraw(
             self.shop_user, d, order_id="test_order_id", note="test_withdraw"
         )
-        self.assertEqual(action.amount, d)
-        self.assertEqual(action.order_id, "test_order_id")
-        self.assertEqual(action.note, "test_withdraw")
+        self.assertEqual(transfer.amount, d)
+        self.assertEqual(transfer.order_id, "test_order_id")
+        self.assertEqual(transfer.note, "test_withdraw")
 
         self.fund.refresh_from_db()
         self.assertEqual(self.fund.cash, user_old_cash - d)

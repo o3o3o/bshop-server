@@ -1,9 +1,18 @@
 import uuid
 from django.db import models
 from django.utils.functional import cached_property
+from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.postgres.fields import JSONField
 
 from common.utils import d0
+
+
+class MYJSONField(JSONField):
+    def __init__(self, **kw):
+        kw.setdefault("encoder", DjangoJSONEncoder)
+        kw.setdefault("null", True)
+        kw.setdefault("blank", True)
+        super().__init__(**kw)
 
 
 class DecimalField(models.DecimalField):
@@ -11,7 +20,7 @@ class DecimalField(models.DecimalField):
         kw.setdefault("max_digits", 65)
         kw.setdefault("decimal_places", 4)
         kw.setdefault("default", d0)
-        super(DecimalField, self).__init__(**kw)
+        super().__init__(**kw)
 
 
 class BaseModel(models.Model):
@@ -28,7 +37,7 @@ class BaseModel(models.Model):
 
 
 class ModelWithExtraInfo(models.Model):
-    extra_info = JSONField(null=True, blank=True)
+    extra_info = MYJSONField()
 
     class Meta:
         abstract = True

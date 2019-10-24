@@ -50,7 +50,6 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     )
     is_vendor = models.BooleanField(default=False, verbose_name=_("Is vendor"))
 
-    # TODO: use secret + sixdigit to encrypt the raw password
     payment_password = models.CharField(
         max_length=1024, null=True, blank=True, verbose_name=_("Payment password")
     )

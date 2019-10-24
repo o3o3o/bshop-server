@@ -3,11 +3,14 @@ from decimal import Decimal
 from datetime import datetime, timedelta
 from django.db import models, transaction
 from django.utils.functional import cached_property
+from django.contrib.postgres.fields import JSONField
 
 from user_center.models import ShopUser
-from common.utils import d0, utc_now, to_decimal
+from common.utils import d0, utc_now
+from wallet.utils import get_cash_back_threshold, get_cash_back_expired_days
 from common.base_models import (
     BaseModel,
+    MYJSONField,
     DecimalField,
     ModelWithExtraInfo,
     RefreshFromDbInvalidatesCachedPropertiesMixin,
@@ -128,11 +131,19 @@ class HoldFund(BaseModel, ModelWithExtraInfo):
         logger.info(f"Unhold for fund {self.fund_id} amount: {self.amount}")
 
 
-class FundActionManager(models.Manager):
+class FundTransferManager(models.Manager):
     pass
 
 
-class FundAction(BaseModel, ModelWithExtraInfo):
+class FundTransfer(BaseModel, ModelWithExtraInfo):
+    TYPE_CHOICES = [(x, x) for x in ["WITHDRAW", "DEPOSIT", "CASHBACK", "TRANSFER"]]
+    STATUS_CHOICES = [(x, x) for x in ["ADMIN_REQUIRED", "ADMIN_DENIED", "SUCCESS"]]
+
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="SUCCESS", db_index=True
+    )
+
+    # how to support deduct from holdfund?
     from_fund = models.ForeignKey(
         Fund, models.CASCADE, related_name="transfer_as_from", db_index=True, null=True
     )
@@ -140,8 +151,32 @@ class FundAction(BaseModel, ModelWithExtraInfo):
         Fund, models.CASCADE, related_name="transfer_as_to", db_index=True, null=True
     )
     amount = DecimalField()
+    type = models.CharField(max_length=16, choices=TYPE_CHOICES, null=True, blank=True)
     note = models.CharField(max_length=128, null=True, blank=True)
     order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+
+    objects = FundTransferManager()
+
+
+class FundActionManager(models.Manager):
+    # FIXME: how to use fund action to store the history of fund changing
+    def add_action(self, fund, transfer, balance=None, **kw):
+        action, _ = self.update_or_create(
+            fund=fund,
+            transfer=transfer,
+            defaults={"extra_info": kw if kw else None, "balance": balance},
+        )
+        # TODO: send signal
+        return action
+
+
+class FundAction(BaseModel, ModelWithExtraInfo):
+
+    fund = models.ForeignKey(
+        Fund, models.CASCADE, related_name="fund_actions", db_index=True, null=True
+    )
+    transfer = models.ForeignKey(FundTransfer, models.CASCADE, null=True)
+    balance = MYJSONField()
 
     objects = FundActionManager()
 
@@ -156,6 +191,10 @@ def do_transfer(
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
+    transfer = FundTransfer.objects.create(
+        from_fund=from_fund, to_fund=to_fund, amount=amount, note=note
+    )
+
     # First, we try to deduct from the HoldFund, if fail then deduct from Fund
     remain_amount = HoldFund.objects.decr_hold(from_fund, amount)
 
@@ -165,12 +204,13 @@ def do_transfer(
     if remain_amount < d0:
         raise AssertionError("Should not happen here")
 
-    Fund.objects.incr_cash(to_fund.id, amount)
+    new_fund = Fund.objects.get(id=from_fund.id)
+    FundAction.objects.add_action(from_fund, transfer, new_fund.amount_d)
 
-    action = FundAction.objects.create(
-        from_fund=from_fund, to_fund=to_fund, amount=amount, note=note
-    )
-    return action
+    new_fund = Fund.objects.incr_cash(to_fund.id, amount)
+    FundAction.objects.add_action(to_fund, transfer, balance=new_fund.amount_d)
+
+    return transfer
 
 
 @transaction.atomic
@@ -179,12 +219,16 @@ def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None)
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
-    Fund.objects.incr_cash(fund.id, amount)
 
-    action = FundAction.objects.create(
+    transfer = FundTransfer.objects.create(
         to_fund=fund, amount=amount, order_id=order_id, note=note
     )
-    return action
+
+    new_fund = Fund.objects.incr_cash(fund.id, amount)
+
+    FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
+
+    return transfer
 
 
 @transaction.atomic
@@ -194,21 +238,39 @@ def do_withdraw(user: ShopUser, amount: Decimal, order_id: str, note: str = None
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
-    Fund.objects.decr_cash(fund.id, amount)
-
-    action = FundAction.objects.create(
+    transfer = FundTransfer.objects.create(
         from_fund=fund, amount=amount, order_id=order_id, note=note
     )
-    return action
+
+    new_fund = Fund.objects.decr_cash(fund.id, amount)
+
+    FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
+
+    return transfer
 
 
+@transaction.atomic
 def do_cash_back(
     user: ShopUser, amount: Decimal, order_id: str = None, note: str = None
 ):
     # TODO more cash back stragety
-    if amount <= to_decimal("1000"):
+    cash_back_threshold = get_cash_back_threshold()
+    if amount <= cash_back_threshold:
         return
 
-    # FIXME:
+    cash_back_expired_days = get_cash_back_expired_days()
+
     fund = user.get_user_fund()
-    HoldFund.objects.incr_hold(fund, amount, expired_at=utc_now() + timedelta(years=1))
+
+    note = f"cash_back: {amount}"
+    transfer = FundAction.objects.create(
+        to_fund=fund, amount=amount, order_id=order_id, note=note
+    )
+
+    HoldFund.objects.incr_hold(
+        fund, amount, expired_at=utc_now() + timedelta(days=cash_back_expired_days)
+    )
+
+    new_fund = Fund.objects.get(id=fund.id)
+    FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
+    return transfer
