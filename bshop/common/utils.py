@@ -116,7 +116,7 @@ class AvoidResubmit:
     def gen_key(self, request_id, uid):
         return f"{self.prefix}:{self.name}:{uid}:{request_id}"
 
-    def __call__(self, request_id, uid):
+    def __call__(self, request_id, uid=None):
         key = self.gen_key(request_id, uid)
         if self.con.get(key):
             raise self.ResubmittedError

@@ -10,7 +10,7 @@ from wechat_django.pay import signals
 from wechat_django.pay.models.orderresult import UnifiedOrderResult, UnifiedOrder
 from wechat_django.models import WeChatApp, WeChatUser
 
-from common.utils import yuan2fen, to_decimal, fen2yuan
+from common.utils import yuan2fen, to_decimal, fen2yuan, AvoidResubmit
 from common.schema import LoginProvider
 from provider import BaseProvider
 from user_center.models import ShopUser
@@ -105,13 +105,49 @@ class WeChatProvider(BaseProvider):
         except UnifiedOrder.DoesNotExist:
             return None
 
-        sync_wechat_order.apply_async(args=[order.id], expires=60)
+        # just add one task in 10s
+        avoid_resubmit = AvoidResubmit("async_wechat_order", timeout=10)
+        try:
+            avoid_resubmit(order_id)
+            sync_wechat_order.apply_async(args=[order.id], expires=expire)
+        except avoid_resubmit.ResubmittedError as e:
+            pass
 
         return {
             "id": order_id,
             "state": order.trade_state(),
             "amount": fen2yuan(order.total_fee) if order.total_fee else None,
         }
+
+    def withdraw(
+        self,
+        openid,
+        amount,
+        desc,
+        client_ip=None,
+        check_name="OPTION_CHECK",  # 'NO_CHECK'
+        real_name=None,
+        out_trade_no=None,
+        device_info=None,
+    ):
+        # https://pay.weixin.qq.com/wiki/doc/api/tools/mch_pay.php?chapter=14_2
+        # https://wechatpy.readthedocs.io/zh_CN/master/_modules/wechatpy/pay/api/transfer.html#WeChatTransfer.transfer
+        app = self.get_wechat_app()
+        try:
+            res = app.pay.client.transfer.transfer(
+                openid,
+                amount,
+                desc,
+                client_ip=client_ip,
+                check_name=check_name,
+                real_name=real_name,
+                out_trade_no=out_trade_no,
+                device_info=device_info,
+            )
+        except wechatpy.exceptions.WeChatPayException as e:
+            raise e
+
+        return res
 
 
 @receiver(signals.order_updated)

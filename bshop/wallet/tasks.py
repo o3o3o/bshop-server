@@ -21,7 +21,7 @@ def sync_wechat_order(order_id):
         order.trade_state() == UnifiedOrderResult.State.SUCCESS
         or order.time_expire < utc_now()
     ):
-        logger.info(f"Skip sync order {order}")
+        logger.info(f"wechat_order skip sync {order}")
         return
 
     res = order.sync()
@@ -29,7 +29,7 @@ def sync_wechat_order(order_id):
     if order.trade_state() != UnifiedOrderResult.State.SUCCESS:
         raise NoSuccess
     else:
-        logger.info(f"Sync {order} successfully!")
+        logger.info(f"wechat_order sync {order} successfully!")
 
 
 @app.task
