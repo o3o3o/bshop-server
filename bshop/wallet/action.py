@@ -17,7 +17,7 @@ def do_transfer(
     from_user: ShopUser,
     to_user: ShopUser,
     amount: Decimal,
-    order_id: str,
+    order_id: str = None,
     note: str = None,
 ):
     from_fund = from_user.get_user_fund()
@@ -34,7 +34,6 @@ def do_transfer(
         note=note,
         type="TRANSFER",
     )
-    print(transfer, transfer.from_fund, transfer.to_fund)
 
     # First, we try to deduct from the HoldFund, if fail then deduct from Fund
     remain_amount = HoldFund.objects.decr_hold(from_fund, amount)

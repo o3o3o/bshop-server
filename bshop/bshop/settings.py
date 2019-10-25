@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "user_center",
     "wallet",
     "sms_service",
+    "provider",
 ]
 
 MIDDLEWARE = [
@@ -254,7 +255,7 @@ TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
 if not env.bool("DISABLE_COVERAGE", default=False):
     NOSE_ARGS = [
         "--with-coverage",
-        "--cover-package=gql,wallet,user_center",
+        "--cover-package=gql,wallet,user_center,provider,common",
         "--cover-min-percentage=60",
     ]
 

@@ -10,7 +10,7 @@ class SystemQuotaManager(models.Manager):
         try:
             sq = self.get(name=name)
             return sq.quota
-        except SystemQuota.DoesNotExist:
+        except self.model.DoesNotExist:
             pass
         return to_decimal(default)
 
@@ -26,11 +26,5 @@ class SystemQuota(BaseModel):
 
     objects = SystemQuotaManager()
 
-    class Meta:
-        db_table = "system_quotas"
-
     def __str__(self):
         return self.name
-
-
-# TODO: user quota?
