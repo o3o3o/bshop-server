@@ -9,6 +9,8 @@ from common import exceptions
 
 logger = logging.getLogger(__name__)
 
+default_app_config = "provider.apps.ProviderConfig"
+
 
 class BaseProvider(object):
     field = None

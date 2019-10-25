@@ -47,6 +47,7 @@ class ProviderTest(TestCase):
         FundAction.objects.all().delete()
         FundTransfer.objects.all().delete()
         UnifiedOrder.objects.all().delete()
+        HoldFund.objects.all().delete()
 
     @FakeRedis("provider.wechat.get_redis_connection")
     def test_order_update_transfer(self):

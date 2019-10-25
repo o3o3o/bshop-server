@@ -166,6 +166,7 @@ class Query(graphene.ObjectType):
     order_info = graphene.Field(
         OrderInfo, provider=graphene.Argument(LoginProvider), order_id=graphene.String()
     )
+    # test_order_info = graphene.Field(OrderInfo, order_id=graphene.String())
 
     @login_required
     def resolve_fund(self, info):
@@ -182,6 +183,22 @@ class Query(graphene.ObjectType):
         setattr(info, "fund", fund)
 
         return FundAction.objects.filter(Q(from_fund=fund) | Q(to_fund=fund))
+
+    # def resolve_test_order_info(self, info, order_id, **kw):
+    #    from wechat_django.pay.models import UnifiedOrder
+    #    from wechat_django.pay import signals
+    #    from wechat_django.pay.signals import order_updated
+
+    #    order = UnifiedOrder.objects.get(id=order_id)
+    #    order.result.update({"attach": "attach"}, signal=True, verify=False)
+    #    signals.order_updated.send(
+    #        sender=order.pay.staticname,
+    #        result=order.result,
+    #        order=order,
+    #        state=order.trade_state,
+    #        attach="attach",
+    #    )
+    #    return None
 
     @login_required
     def resolve_order_info(self, info, provider, order_id, **kw):
