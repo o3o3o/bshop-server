@@ -131,9 +131,10 @@ class WeChatProvider(BaseProvider):
         expire = 10
         avoid_resubmit = AvoidResubmit("async_wechat_order", timeout=expire)
         try:
-            avoid_resubmit(order_id)
+            avoid_resubmit(order.id)
             sync_wechat_order.apply_async(args=[order.id], expires=expire)
         except avoid_resubmit.ResubmittedError:
+            print("Avoid async wechat_order*********")
             pass
 
         return {
@@ -175,6 +176,7 @@ class WeChatProvider(BaseProvider):
 @receiver(signals.order_updated)
 def order_updated(result, order, state, attach, **kwargs):
     # TODO: how to unify wechat, alipay?
+    print("order_updated ...")
     if state != UnifiedOrderResult.State.SUCCESS:
         logger.info(f"{order} deposit signal, skip for no-success state")
         return
@@ -186,6 +188,7 @@ def order_updated(result, order, state, attach, **kwargs):
     con = get_redis_connection()
     lock_name = f"order:{order.id}_update_signal"
 
+    print("order_updated2 ...")
     provider = order.ext_info["provider"]
     user = ShopUser.objects.get_user_by_openid(provider, order.openid)
 
@@ -199,9 +202,11 @@ def order_updated(result, order, state, attach, **kwargs):
     else:
         note = f"user:{user.id} deposit"
 
+    print("order_updated 3 ...")
     # Ensure cocurrent callback in 10 seconds
     with con.lock(lock_name, timeout=10):
         with transaction.atomic():
+            print("order_updated 4 ...")
             if is_transfer:
                 do_deposit(user, amount, order_id=order.id, note=note)
                 do_transfer(user, to_user, amount, order_id=order.id, note=note)
@@ -210,4 +215,5 @@ def order_updated(result, order, state, attach, **kwargs):
 
             do_cash_back(user, amount, order_id=order.id, note=note)
 
+    print("order_updated end ...")
     logger.info(f"{order} deposit success: {note}")

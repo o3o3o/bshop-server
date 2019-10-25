@@ -33,6 +33,12 @@ def sync_wechat_order(order_id):
 
 
 @app.task
+def test_order(order_id):
+    order = UnifiedOrder.objects.get(id=order_id)
+    order.result.update({"attach": "attach"}, signal=True, verify=False)
+
+
+@app.task
 def check_expired_holdfund():
     # TODO: check aciton with celery  ETA?
     HoldFund.objects.expired_unhold()
