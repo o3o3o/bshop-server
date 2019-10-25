@@ -8,11 +8,16 @@ from functools import wraps
 from decimal import Decimal
 from datetime import datetime
 from django_redis import get_redis_connection
+from django.core.serializers.json import DjangoJSONEncoder
 
 from common import exceptions
 
 
 d0 = Decimal("0")
+
+
+def json_dumps(d):
+    return json.dumps(d, cls=DjangoJSONEncoder)
 
 
 def utc_now():
@@ -116,7 +121,7 @@ class AvoidResubmit:
     def gen_key(self, request_id, uid):
         return f"{self.prefix}:{self.name}:{uid}:{request_id}"
 
-    def __call__(self, request_id, uid=None):
+    def __call__(self, request_id, uid=""):
         key = self.gen_key(request_id, uid)
         if self.con.get(key):
             raise self.ResubmittedError

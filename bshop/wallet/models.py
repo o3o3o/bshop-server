@@ -151,9 +151,15 @@ class FundTransfer(BaseModel, ModelWithExtraInfo):
     amount = DecimalField()
     type = models.CharField(max_length=16, choices=TYPE_CHOICES, null=True, blank=True)
     note = models.CharField(max_length=128, null=True, blank=True)
-    order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+    order_id = models.CharField(max_length=64, null=True, blank=True)
 
     objects = FundTransferManager()
+
+    class Meta:
+        unique_together = (("type", "order_id"),)
+
+    def __str__(self):
+        return f"{self.from_fund} {self.to_fund} {self.type} {self.amount}"
 
 
 class FundActionManager(models.Manager):

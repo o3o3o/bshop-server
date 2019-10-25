@@ -12,7 +12,7 @@ tox-pipenv = "*"
 django = "*"
 whitenoise = "*"
 django-redis = "*"
-fakeredis = "*"
+fakeredis = {extras = ["lua"],version = "*"}
 django-nose = "*"
 flower = "*"
 twilio = "*"

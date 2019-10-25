@@ -6,6 +6,7 @@ from django.db import transaction
 from django.dispatch import receiver
 from django_redis import get_redis_connection
 
+import wechatpy
 from wechat_django.pay import signals
 from wechat_django.pay.models.orderresult import UnifiedOrderResult, UnifiedOrder
 from wechat_django.models import WeChatApp, WeChatUser
@@ -15,8 +16,8 @@ from common.schema import LoginProvider
 from provider import BaseProvider
 from user_center.models import ShopUser
 from wallet.tasks import sync_wechat_order
-from wallet.models import FundAction
-from wallet.action import do_deposit, do_transfer, do_withdraw
+from wallet.models import FundTransfer
+from wallet.action import do_deposit, do_transfer, do_cash_back
 
 
 logger = logging.getLogger(__name__)
@@ -27,22 +28,45 @@ class WeChatProvider(BaseProvider):
     name = LoginProvider.WECHAT.value
 
     def __init__(self):
-        self.app = None
+        self._app = None
 
     def get_wechat_app(self):
-        if self.app:
-            return self.app
+        if self._app:
+            return self._app
 
-        self.app = WeChatApp.objects.get_by_name("liuxiaoge")
-        return self.app
+        self._app = WeChatApp.objects.get_by_name("liuxiaoge")
+        return self._app
+
+    @property
+    def app(self):
+        return self.get_wechat_app()
 
     def get_openid(self, auth_code: str = None, shop_user: ShopUser = None):
-        app = self.get_wechat_app()
         if auth_code:
-            _, data = app.auth(auth_code)
+            _, data = self.app.auth(auth_code)
             return data["openid"]
         elif shop_user:
             return shop_user.wechat_id
+
+    def _create_order(
+        self,
+        body: str,
+        total_fee: int,
+        out_trade_no: str,
+        user: WeChatUser = None,
+        openid: str = None,
+        request=None,
+        ext_info=None,
+    ):
+
+        return self.app.pay.create_order(
+            user=user,
+            body=body,
+            total_fee=total_fee,
+            out_trade_no=out_trade_no,
+            openid=openid,
+            ext_info=ext_info,
+        )
 
     def create_order(
         self,
@@ -57,8 +81,7 @@ class WeChatProvider(BaseProvider):
         if openid is None and wechat_user is None:
             raise ValueError("openid , wechat_user cannot be none at same time")
 
-        app = self.get_wechat_app()
-        order = app.pay.create_order(
+        order = self._create_order(
             user=wechat_user,
             body=body,
             total_fee=yuan2fen(amount),
@@ -96,21 +119,21 @@ class WeChatProvider(BaseProvider):
         return res
 
     def order_info(self, order_id, openid):
-        app = self.get_wechat_app()
         try:
             # TODO: get by open_id
             order = UnifiedOrder.objects.get(
-                pay=app.pay, out_trade_no=order_id, openid=openid
+                pay=self.app.pay, out_trade_no=order_id, openid=openid
             )
         except UnifiedOrder.DoesNotExist:
             return None
 
         # just add one task in 10s
-        avoid_resubmit = AvoidResubmit("async_wechat_order", timeout=10)
+        expire = 10
+        avoid_resubmit = AvoidResubmit("async_wechat_order", timeout=expire)
         try:
             avoid_resubmit(order_id)
             sync_wechat_order.apply_async(args=[order.id], expires=expire)
-        except avoid_resubmit.ResubmittedError as e:
+        except avoid_resubmit.ResubmittedError:
             pass
 
         return {
@@ -132,9 +155,8 @@ class WeChatProvider(BaseProvider):
     ):
         # https://pay.weixin.qq.com/wiki/doc/api/tools/mch_pay.php?chapter=14_2
         # https://wechatpy.readthedocs.io/zh_CN/master/_modules/wechatpy/pay/api/transfer.html#WeChatTransfer.transfer
-        app = self.get_wechat_app()
         try:
-            res = app.pay.client.transfer.transfer(
+            res = self.app.pay.client.transfer.transfer(
                 openid,
                 amount,
                 desc,
@@ -157,7 +179,7 @@ def order_updated(result, order, state, attach, **kwargs):
         logger.info(f"{order} deposit signal, skip for no-success state")
         return
 
-    if FundAction.objects.filter(order_id=order.id).exists():
+    if FundTransfer.objects.filter(order_id=order.id).exists():
         logger.info(f"{order} deposit signal, skip for duplicate trigger")
         return
 
@@ -168,7 +190,7 @@ def order_updated(result, order, state, attach, **kwargs):
     user = ShopUser.objects.get_user_by_openid(provider, order.openid)
 
     amount = to_decimal(order.total_fee / 100)
-    is_transfer = order.ext_info and order.ext_info.get("to_user_id")
+    is_transfer = bool(order.ext_info and order.ext_info.get("to_user_id"))
 
     if is_transfer:
         to_user_id = order.ext_info["to_user_id"]
@@ -182,7 +204,7 @@ def order_updated(result, order, state, attach, **kwargs):
         with transaction.atomic():
             if is_transfer:
                 do_deposit(user, amount, order_id=order.id, note=note)
-                do_transfer(user, to_user, amount, note=note)
+                do_transfer(user, to_user, amount, order_id=order.id, note=note)
             else:
                 do_deposit(user, amount, order_id=order.id, note=note)
 

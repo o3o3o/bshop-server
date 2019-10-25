@@ -63,7 +63,7 @@ def get_provider_cls(by_name=None):
     if by_name:
         cls = _ProviderClsMap.get(by_name, None)
         if not cls:
-            raise exceptions.DoNotSupportBindType
+            raise exceptions.DoNotSupportBindType(by_name)
         return cls
 
     return _ProviderClsMap.values()
