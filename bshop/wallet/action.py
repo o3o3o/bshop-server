@@ -6,7 +6,7 @@ from django.db import transaction
 from common.utils import d0, utc_now
 from user_center.models import ShopUser
 
-from wallet.utils import get_cash_back_threshold, get_cash_back_expired_days
+from wallet.utils import CashBackSettings
 from wallet.models import Fund, FundAction, FundTransfer, HoldFund
 
 logger = logging.getLogger(__name__)
@@ -95,11 +95,10 @@ def do_cash_back(
     user: ShopUser, amount: Decimal, order_id: str = None, note: str = None
 ):
     # TODO more cash back stragety
-    cash_back_threshold = get_cash_back_threshold()
-    if amount <= cash_back_threshold:
-        return
+    csetting = CashBackSettings()
 
-    cash_back_expired_days = get_cash_back_expired_days()
+    if amount <= csetting.threshold:
+        return
 
     fund = user.get_user_fund()
 
@@ -109,7 +108,7 @@ def do_cash_back(
     )
 
     HoldFund.objects.incr_hold(
-        fund, amount, expired_at=utc_now() + timedelta(days=cash_back_expired_days)
+        fund, amount, expired_at=utc_now() + timedelta(days=csetting.expired_days)
     )
 
     new_fund = Fund.objects.get(id=fund.id)

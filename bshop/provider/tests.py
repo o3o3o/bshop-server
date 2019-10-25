@@ -7,6 +7,7 @@ from wechat_django.models import WeChatApp
 from wechat_django.pay.models import WeChatPay, UnifiedOrder
 
 from common.utils import to_decimal, json_dumps
+from wallet.utils import CashBackSettings
 from wallet.factory import FundFactory
 from wallet.models import Fund, HoldFund, FundAction, FundTransfer
 from user_center.models import ShopUser
@@ -31,6 +32,7 @@ class ProviderTest(TestCase):
         self.shop_user = ShopUserFactory(wechat_id="openid")
         self.app = WeChatApp.objects.get_by_name("pay")
         self.fund = FundFactory(shop_user=self.shop_user)
+        # self.holdfund = HoldFundFactory(fund=self.fund)
 
         self.shop_user2 = ShopUserFactory(wechat_id="openid2")
         self.fund2 = FundFactory(shop_user=self.shop_user2)
@@ -73,24 +75,37 @@ class ProviderTest(TestCase):
         self.assertEqual(transfer.note, f"deposit&buy")
         self.assertEqual(transfer.amount, to_decimal("1.01"))
 
-    # TODO: test do cash back
-
     @FakeRedis("provider.wechat.get_redis_connection")
     def test_order_update_deposit(self):
+        csettings = CashBackSettings()
+        csettings.threshold = "1"
+
         minimal = self.minimal_example
 
         order = self.app.pay.create_order(self.wechat_user, self.request, **minimal)
         result = self.success(self.app.pay, order)
+
+        old_hold = self.fund.hold
 
         order.update(result)
 
         # test deposit
         new_fund = Fund.objects.get(id=self.fund.id)
         self.assertEqual(self.fund.cash + to_decimal("1.01"), new_fund.cash)
-        transfer = FundTransfer.objects.get(to_fund=self.fund, order_id=order.id)
-        self.assertEqual(transfer.type, "DEPOSIT")
+        self.assertEqual(old_hold + to_decimal("1.01"), new_fund.hold)
+        self.assertEqual(self.fund.total + to_decimal("2.02"), new_fund.total)
+        transfer = FundTransfer.objects.get(
+            to_fund=self.fund, order_id=order.id, type="DEPOSIT"
+        )
         self.assertEqual(transfer.note, f"user:{self.shop_user.id} deposit")
-        fund_action = FundAction.objects.get(fund=self.fund, transfer=transfer)
+
+        # test cashback
+        cashback_transfer = FundTransfer.objects.get(
+            to_fund=self.fund, order_id=order.id, type="CASHBACK"
+        )
+        self.assertEqual(cashback_transfer.amount, to_decimal("1.01"))
+
+        fund_action = FundAction.objects.get(fund=self.fund, transfer=cashback_transfer)
         self.assertDictEqual(
             fund_action.balance, json.loads(json_dumps(new_fund.amount_d))
         )
