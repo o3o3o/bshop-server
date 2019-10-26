@@ -25,11 +25,19 @@ def do_transfer(
     from_fund = from_user.get_user_fund()
     to_fund = to_user.get_user_fund()
 
-    if amount <= d0:
-        raise ValueError("Invalid minus amount")
-
     if from_fund.total < amount:
         raise exceptions.NotEnoughBalance
+
+    # First, we try to deduct from the HoldFund, if fail then deduct from Fund
+    remain_amount = HoldFund.objects.decr_hold(from_fund, amount)
+
+    if remain_amount < d0:
+        raise AssertionError("Should not happen here")
+    elif remain_amount > d0:
+        Fund.objects.decr_cash(from_fund.id, remain_amount)
+
+    new_from_fund = Fund.objects.get(id=from_fund.id)
+    new_to_fund = Fund.objects.incr_cash(to_fund.id, amount)
 
     transfer = FundTransfer.objects.create(
         from_fund=from_fund,
@@ -41,20 +49,8 @@ def do_transfer(
         extra_info=kw,
     )
 
-    # First, we try to deduct from the HoldFund, if fail then deduct from Fund
-    remain_amount = HoldFund.objects.decr_hold(from_fund, amount)
-
-    if remain_amount > d0:
-        Fund.objects.decr_cash(from_fund.id, remain_amount)
-
-    if remain_amount < d0:
-        raise AssertionError("Should not happen here")
-
-    new_fund = Fund.objects.get(id=from_fund.id)
-    FundAction.objects.add_action(from_fund, transfer, new_fund.amount_d)
-
-    new_fund = Fund.objects.incr_cash(to_fund.id, amount)
-    FundAction.objects.add_action(to_fund, transfer, balance=new_fund.amount_d)
+    FundAction.objects.add_action(from_fund, transfer, new_from_fund.amount_d)
+    FundAction.objects.add_action(to_fund, transfer, balance=new_to_fund.amount_d)
 
     return transfer
 
@@ -63,8 +59,7 @@ def do_transfer(
 def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None, **kw):
     fund = user.get_user_fund()
 
-    if amount <= d0:
-        raise ValueError("Invalid minus amount")
+    new_fund = Fund.objects.incr_cash(fund.id, amount)
 
     transfer = FundTransfer.objects.create(
         to_fund=fund,
@@ -74,8 +69,6 @@ def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None,
         type="DEPOSIT",
         extra_info=kw,
     )
-
-    new_fund = Fund.objects.incr_cash(fund.id, amount)
 
     FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
 
@@ -91,8 +84,7 @@ def do_withdraw(
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
-    if fund.cash < amount:
-        raise exceptions.NotEnoughBalance
+    new_fund = Fund.objects.decr_cash(fund.id, amount)
 
     transfer = FundTransfer.objects.create(
         from_fund=fund,
@@ -102,8 +94,6 @@ def do_withdraw(
         type="WITHDRAW",
         extra_info=kw,
     )
-
-    new_fund = Fund.objects.decr_cash(fund.id, amount)
 
     FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
 

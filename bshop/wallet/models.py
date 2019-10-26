@@ -6,6 +6,7 @@ from django.utils.functional import cached_property
 
 from user_center.models import ShopUser
 from common.utils import d0, utc_now
+from common import exceptions
 from common.base_models import (
     BaseModel,
     MYJSONField,
@@ -18,12 +19,19 @@ logger = logging.getLogger(__name__)
 
 
 class FundManager(models.Manager):
-    def incr_cash(self, fund_id, amount):
+    def incr_cash(self, fund_id, amount: Decimal):
+
+        if amount <= d0:
+            raise ValueError("Invalid minus amount")
+
         cnt = self.filter(id=fund_id).update(cash=models.F("cash") + amount)
         logger.info("fund %s incr cash %s, cnt=%s", fund_id, amount, cnt)
         return self.get(id=fund_id)
 
-    def decr_cash(self, fund_id, amount):
+    def decr_cash(self, fund_id, amount: Decimal):
+        if amount <= d0:
+            raise ValueError("Invalid minus amount")
+
         cnt = self.filter(id=fund_id, cash__gte=amount).update(
             cash=models.F("cash") - amount
         )
@@ -67,9 +75,14 @@ class Fund(
 
 class HoldFundManager(models.Manager):
     def incr_hold(self, fund: Fund, amount: Decimal, expired_at: datetime):
+        if amount <= d0:
+            raise ValueError("Invalid minus amount")
         return self.create(fund=fund, amount=amount, expired_at=expired_at)
 
     def decr_hold(self, fund: Fund, amount: Decimal):
+        if amount <= d0:
+            raise ValueError("Invalid minus amount")
+
         with transaction.atomic():
             hold_funds = (
                 self.select_for_update().filter(fund=fund).order_by("-expired_at")
