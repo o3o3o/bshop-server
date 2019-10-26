@@ -151,7 +151,7 @@ class WeChatProvider(BaseProvider):
         amount: Decimal,
         desc: str,
         client_ip=None,
-        check_name="OPTION_CHECK",  # 'NO_CHECK'
+        check_name="NO_CHECK",  # "OPTION_CHECK",  # 'NO_CHECK'
         real_name=None,
         out_trade_no=None,
         device_info=None,
