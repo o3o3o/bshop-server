@@ -11,6 +11,7 @@ from django_fakeredis import FakeRedis
 from wechat_django.pay.models import WeChatPay  # , UnifiedOrder
 from wechat_django.models import WeChatApp
 
+from common import exceptions
 from common.utils import (
     ordered_dict_2_dict,
     urlencode,
@@ -198,7 +199,7 @@ class WalletTests(JSONWebTokenTestCase):
         old_amount2 = self.fund2.amount_d
 
         delta = self.fund.total + to_decimal("0.1")
-        with self.assertRaises(Fund.InsufficientCash):
+        with self.assertRaises(exceptions.NotEnoughBalance):
             do_transfer(self.shop_user, self.shop_user2, delta, note="test transfer2")
 
         self.fund.refresh_from_db()
@@ -278,7 +279,7 @@ class WalletTests(JSONWebTokenTestCase):
 
         # test insufficient cash
         delta = self.fund.cash + to_decimal("0.1")
-        with self.assertRaises(Fund.InsufficientCash):
+        with self.assertRaises(exceptions.NotEnoughBalance):
             do_withdraw(
                 self.shop_user, delta, order_id="test_order_id2", note="test_withdraw"
             )
@@ -288,6 +289,75 @@ class WalletTests(JSONWebTokenTestCase):
         self.fund.refresh_from_db()
 
         self.assertEquals(self.fund.cash, user_old_cash)
+
+    @FakeRedis("common.utils.get_redis_connection")
+    def test_withdraw_api(self):
+        self.client.authenticate(self.user)
+        gql = """
+        mutation _($input: WithdrawInput!){
+          withdraw(input: $input){
+            success
+          }
+        }"""
+        test_request_uuid = uuid.uuid4().hex
+        variables = {
+            "input": {
+                "amount": decimal2str(to_decimal("0.1") + self.fund.cash),
+                "requestId": test_request_uuid,
+                "provider": "WECHAT",
+            }
+        }
+        # test balance not enough
+        data = self.client.execute(gql, variables)
+        self.assertIsNotNone(data.errors)
+        self.assertEquals("not_enough_balance", data.errors[0].message)
+
+        # test resbumitted
+        data = self.client.execute(gql, variables)
+        self.assertIsNotNone(data.errors)
+        self.assertEquals("resubmitted", data.errors[0].message)
+
+        variables["input"]["amount"] = "0.1"
+        variables["input"]["requestId"] = uuid.uuid4().hex
+
+        old_fund_cash = self.fund.cash
+
+        # test fail and revert
+        def withdraw_fail(*args, **kw):
+            raise exceptions.WithdrawError("fail")
+
+        with patch.object(WeChatProvider, "withdraw") as mock_withdraw:
+            mock_withdraw.side_effect = withdraw_fail
+
+            data = self.client.execute(gql, variables)
+            self.assertIsNotNone(data.errors)
+            self.assertEqual("fail", data.errors[0].message)
+            self.fund.refresh_from_db()
+            self.assertEqual(old_fund_cash, self.fund.cash)
+
+        # test withdraw success
+        variables["input"]["requestId"] = uuid.uuid4().hex
+        mocked_result = {
+            "mch_appid": "wx478898d89cf437dc",
+            "mchid": "1231736602",
+            "nonce_str": "pslL019BgHIzSDqfv8FUy6EC32OtZauK",
+            "partner_trade_no": "1231736602201910260304298054",
+            "payment_no": "10100101184011910260023619583860",
+            "payment_time": "2019-10-26 11:04:32",
+            "result_code": "SUCCESS",
+            "return_code": "SUCCESS",
+            "return_msg": None,
+        }
+        with patch.object(WeChatProvider, "withdraw") as mock_withdraw:
+            mock_withdraw.return_value = mocked_result
+
+            data = self.client.execute(gql, variables)
+            self.assertIsNone(data.errors)
+
+        self.fund.refresh_from_db()
+        self.assertEqual(old_fund_cash - to_decimal("0.1"), self.fund.cash)
+
+        self.assertTrue(data.data["withdraw"]["success"])
 
     def test_get_qr_code_info(self):
         self.client.authenticate(self.user)

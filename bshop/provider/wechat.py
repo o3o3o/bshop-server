@@ -2,15 +2,17 @@ import uuid
 import logging
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.dispatch import receiver
 from django_redis import get_redis_connection
 
 import wechatpy
 from wechat_django.pay import signals
-from wechat_django.pay.models.orderresult import UnifiedOrderResult, UnifiedOrder
 from wechat_django.models import WeChatApp, WeChatUser
+from wechat_django.pay.models.orderresult import UnifiedOrderResult, UnifiedOrder
 
+from common import exceptions
 from common.utils import yuan2fen, to_decimal, fen2yuan, AvoidResubmit
 from common.schema import LoginProvider
 from provider import BaseProvider
@@ -100,10 +102,10 @@ class WeChatProvider(BaseProvider):
 
         ext_info = {"provider": self.name}
         if to_user:
-            body = f"柳小哥-{to_user.vendor_name}"
+            body = settings.LOGO_NAME + f"-{to_user.vendor_name}"
             ext_info["to_user_id"] = to_user.id
         else:
-            body = "柳小哥-会员充值"
+            body = settings.LOGO_NAME + "-会员充值"
 
         res = self.create_order(
             openid=openid,
@@ -145,9 +147,9 @@ class WeChatProvider(BaseProvider):
 
     def withdraw(
         self,
-        openid,
-        amount,
-        desc,
+        openid: str,
+        amount: Decimal,
+        desc: str,
         client_ip=None,
         check_name="OPTION_CHECK",  # 'NO_CHECK'
         real_name=None,
@@ -159,7 +161,7 @@ class WeChatProvider(BaseProvider):
         try:
             res = self.app.pay.client.transfer.transfer(
                 openid,
-                amount,
+                yuan2fen(amount),
                 desc,
                 client_ip=client_ip,
                 check_name=check_name,
@@ -168,8 +170,10 @@ class WeChatProvider(BaseProvider):
                 device_info=device_info,
             )
         except wechatpy.exceptions.WeChatPayException as e:
-            raise e
+            logger.exception(str(e))
+            raise exceptions.WithdrawError(str(e))
 
+        # OrderedDict([('return_code', 'SUCCESS'), ('return_msg', None), ('mch_appid', 'wx478898d89cf437dc'), ('mchid', '1231736602'), ('nonce_str', 'pslL019BgHIzSDqfv8F Uy6EC32OtZauK'), ('result_code', 'SUCCESS'), ('partner_trade_no', '1231736602201910260304298054'), ('payment_no', '10100101184011910260023619583860'), ('paymen t_time', '2019-10-26 11:04:32')])
         return res
 
 

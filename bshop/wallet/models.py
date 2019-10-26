@@ -31,7 +31,7 @@ class FundManager(models.Manager):
             logger.error(
                 "fund %s decr cash %s, cnt=%s, InsufficientCash", fund_id, amount, cnt
             )
-            raise self.model.InsufficientCash()
+            raise exceptions.NotEnoughBalance
 
         logger.info("fund %s decr cash %s, cnt=%s", fund_id, amount, cnt)
         return self.get(id=fund_id)
@@ -51,9 +51,6 @@ class Fund(
 
     def __str__(self):
         return f"fund:{self.id} {self.shop_user.phone}"
-
-    class InsufficientCash(Exception):
-        pass
 
     @cached_property
     def total(self):
@@ -131,6 +128,9 @@ class HoldFund(BaseModel, ModelWithExtraInfo):
 
 class FundTransferManager(models.Manager):
     pass
+    # def create(self, *args, **kw):
+    #    all_fields = [f.name for f in self.model_meta.get_fields()]
+    #    return super().create(self, *args, **kw)
 
 
 class FundTransfer(BaseModel, ModelWithExtraInfo):

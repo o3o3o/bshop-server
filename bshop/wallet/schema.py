@@ -4,6 +4,8 @@ import graphene
 from graphene_django import DjangoObjectType
 from graphql_jwt.decorators import login_required
 from django.db.models import Q
+from django.db import transaction
+from django.conf import settings
 
 from common import exceptions
 from common.schema import LoginProvider, Result, OrderState
@@ -12,7 +14,7 @@ from gql import type as gtype
 
 from user_center.models import ShopUser
 from wallet.models import FundAction, Fund
-from wallet.action import do_transfer
+from wallet.action import do_transfer, do_withdraw
 from provider import get_provider_cls
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,60 @@ class Ledger(DjangoObjectType):
             raise ValueError
 
 
+class WithdrawInput(graphene.InputObjectType):
+    amount = gtype.Decimal(required=True)
+    request_id = graphene.UUID(required=True)
+    provider = graphene.Field(LoginProvider, required=True)
+
+
+class Withdraw(graphene.Mutation):
+    class Arguments:
+        params = WithdrawInput(required=True, name="input")
+
+    Output = Result
+
+    @login_required
+    def mutate(self, info, params):
+
+        shop_user = info.context.user.shop_user
+
+        avoid_resubmit = AvoidResubmit("withdraw")
+        try:
+            avoid_resubmit(params.request_id, shop_user.id)
+        except avoid_resubmit.ResubmittedError as e:
+            raise exceptions.GQLError(e.message)
+
+        try:
+            cls = get_provider_cls(params.provider)
+            obj = cls()
+            openid = obj.get_openid(shop_user=shop_user)
+        except exceptions.DoNotSupportBindType:
+            raise exceptions.GQLError(f"Does not support {params.provider}")
+
+        note = settings.LOGO_NAME + "-提现"
+
+        with transaction.atomic():
+            try:
+                transfer = do_withdraw(shop_user, params.amount, note="提现到零钱")
+            except exceptions.NotEnoughBalance as e:
+                raise exceptions.GQLError(e.message)
+
+            try:
+                res = obj.withdraw(openid, params.amount, note)
+            except exceptions.WithdrawError as e:
+                # FIXME: revert do_withdraw?
+                # 提现进行中，可能会有一定延时，需要人工处理
+                # 提现排队中....
+                logger.exception(str(e))
+                raise exceptions.GQLError(e.message)
+
+            transfer.extra_info = dict(res)
+            transfer.order_id = res["payment_no"]
+            transfer.save()
+
+            return Result(success=True)
+
+
 class CreatePayOrderInput(graphene.InputObjectType):
     provider = graphene.Field(LoginProvider, required=True)
     code = graphene.String()
@@ -49,6 +105,8 @@ class CreatePayOrderInput(graphene.InputObjectType):
 
 # https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=9_1&index=1
 class CreatePayOrder(graphene.Mutation):
+    """ deposit """
+
     class Arguments:
         params = CreatePayOrderInput(required=True, name="input")
 
@@ -116,9 +174,15 @@ class Transfer(graphene.Mutation):
         # TODO:
         # 3. do transfer
         to_user = ShopUser.objects.get(uuid=params.to)
-        do_transfer(
-            from_user=shop_user, to_user=to_user, amount=params.amount, note=params.note
-        )
+        try:
+            do_transfer(
+                from_user=shop_user,
+                to_user=to_user,
+                amount=params.amount,
+                note=params.note,
+            )
+        except exceptions.NotEnoughBalance as e:
+            raise exceptions.GQLError(e.message)
 
         return Result(success=True)
 
@@ -126,6 +190,7 @@ class Transfer(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     create_pay_order = CreatePayOrder.Field()
     transfer = Transfer.Field()
+    withdraw = Withdraw.Field()
 
 
 class OrderInfo(graphene.ObjectType):

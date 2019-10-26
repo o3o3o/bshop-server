@@ -3,6 +3,7 @@ from decimal import Decimal
 from datetime import timedelta
 from django.db import transaction
 
+from common import exceptions
 from common.utils import d0, utc_now
 from user_center.models import ShopUser
 
@@ -19,12 +20,16 @@ def do_transfer(
     amount: Decimal,
     order_id: str = None,
     note: str = None,
+    **kw,
 ):
     from_fund = from_user.get_user_fund()
     to_fund = to_user.get_user_fund()
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
+
+    if from_fund.total < amount:
+        raise exceptions.NotEnoughBalance
 
     transfer = FundTransfer.objects.create(
         from_fund=from_fund,
@@ -33,6 +38,7 @@ def do_transfer(
         order_id=order_id,
         note=note,
         type="TRANSFER",
+        extra_info=kw,
     )
 
     # First, we try to deduct from the HoldFund, if fail then deduct from Fund
@@ -54,14 +60,19 @@ def do_transfer(
 
 
 @transaction.atomic
-def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None):
+def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None, **kw):
     fund = user.get_user_fund()
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
     transfer = FundTransfer.objects.create(
-        to_fund=fund, amount=amount, order_id=order_id, note=note, type="DEPOSIT"
+        to_fund=fund,
+        amount=amount,
+        order_id=order_id,
+        note=note,
+        type="DEPOSIT",
+        extra_info=kw,
     )
 
     new_fund = Fund.objects.incr_cash(fund.id, amount)
@@ -72,14 +83,24 @@ def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None)
 
 
 @transaction.atomic
-def do_withdraw(user: ShopUser, amount: Decimal, order_id: str, note: str = None):
+def do_withdraw(
+    user: ShopUser, amount: Decimal, order_id: str = None, note: str = None, **kw
+):
     fund = user.get_user_fund()
 
     if amount <= d0:
         raise ValueError("Invalid minus amount")
 
+    if fund.cash < amount:
+        raise exceptions.NotEnoughBalance
+
     transfer = FundTransfer.objects.create(
-        from_fund=fund, amount=amount, order_id=order_id, note=note, type="WITHDRAW"
+        from_fund=fund,
+        amount=amount,
+        order_id=order_id,
+        note=note,
+        type="WITHDRAW",
+        extra_info=kw,
     )
 
     new_fund = Fund.objects.decr_cash(fund.id, amount)
@@ -91,7 +112,7 @@ def do_withdraw(user: ShopUser, amount: Decimal, order_id: str, note: str = None
 
 @transaction.atomic
 def do_cash_back(
-    user: ShopUser, amount: Decimal, order_id: str = None, note: str = None
+    user: ShopUser, amount: Decimal, order_id: str = None, note: str = None, **kw
 ):
     # TODO more cash back stragety
     csetting = CashBackSettings()
@@ -103,7 +124,12 @@ def do_cash_back(
 
     note = f"cash_back: {amount}"
     transfer = FundTransfer.objects.create(
-        to_fund=fund, amount=amount, order_id=order_id, note=note, type="CASHBACK"
+        to_fund=fund,
+        amount=amount,
+        order_id=order_id,
+        note=note,
+        type="CASHBACK",
+        extra_info=kw,
     )
 
     HoldFund.objects.incr_hold(

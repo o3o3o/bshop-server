@@ -259,6 +259,8 @@ if not env.bool("DISABLE_COVERAGE", default=False):
         "--cover-min-percentage=60",
     ]
 
+
+LOGO_NAME = "柳小哥"
 # SMS settings
 SMS_BACKEND_CONSOLE = "smsish.sms.backends.console.SMSBackend"
 SMS_BACKEND_DUMMY = "smsish.sms.backends.dummy.SMSBackend"

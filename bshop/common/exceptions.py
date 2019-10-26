@@ -70,3 +70,11 @@ class WrongPassword(ErrorResultException):
 
 class NeedSetPaymentPassword(ErrorResultException):
     default_message = "need_set_payment_password"
+
+
+class WithdrawError(ErrorResultException):
+    default_message = "withdraw_fail"
+
+
+class NotEnoughBalance(ErrorResultException):
+    default_message = "not_enough_balance"
