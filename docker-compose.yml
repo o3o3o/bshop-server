@@ -63,8 +63,8 @@ services:
     image: nginx
     restart: always
     environment:
-      - NGINX_HOST=${NGINX_HOST:-localhost 127.0.0.1 dev-shop.o3o3o.com} # Set NGINX_HOST in .env
-      - NGINX_PORT=${NGINX_PORT:-80} # Set NGINX_PORT in .env
+      - NGINX_HOST=${NGINX_HOST:-localhost 127.0.0.1 shop.o3o3o.com} # Set NGINX_HOST in .env
+      - NGINX_PORT=${NGINX_PORT:-443} # Set NGINX_PORT in .env
       - ESC=$$
     volumes:
       - ./etc/nginx_default.template:/etc/nginx/conf.d/default.template
