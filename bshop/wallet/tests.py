@@ -142,7 +142,9 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
 
         new_add_cash = to_decimal("1.2")
-        do_deposit(self.shop_user, new_add_cash, order_id="1", note="test")
+        transfer = do_deposit(
+            self.shop_user, new_add_cash, order_id="1", note="test deposit"
+        )
         old_cash = self.fund.cash
 
         self.fund.refresh_from_db()
@@ -157,6 +159,29 @@ class WalletTests(JSONWebTokenTestCase):
             "currency": "CNY",
         }
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
+
+        gql = """
+        query {
+          ledgerList{
+            id
+            type
+            amount
+            note
+            status
+            orderId
+          }
+        }"""
+        data = self.client.execute(gql)
+        self.assertIsNone(data.errors)
+        expected = {
+            "id": str(transfer.uuid),
+            "type": "DEPOSIT",
+            "amount": decimal2str(new_add_cash),
+            "note": "test deposit",
+            "status": "SUCCESS",
+            "orderId": "1",
+        }
+        self.assertDictEqual(ordered_dict_2_dict(data.data["ledgerList"][0]), expected)
 
     def test_unhold(self):
         hold_fund = HoldFundFactory(expired_at=utc_now())

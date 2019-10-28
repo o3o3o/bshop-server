@@ -13,7 +13,7 @@ from common.utils import urlencode, AvoidResubmit, d0
 from gql import type as gtype
 
 from user_center.models import ShopUser
-from wallet.models import FundAction, Fund
+from wallet.models import FundTransfer, Fund
 from wallet.action import do_transfer, do_withdraw
 from provider import get_provider_cls
 
@@ -22,23 +22,22 @@ logger = logging.getLogger(__name__)
 
 class Ledger(DjangoObjectType):
     id = graphene.UUID()
-    out = graphene.Boolean()
+    amount = gtype.Decimal()
+    # balance = graphene.Field(Balance)
 
     class Meta:
-        model = FundAction
-        only_fields = ("amount", "note")
+        model = FundTransfer
+        only_fields = ("type", "order_id", "note", "status")
         order_by = "id"  # FIXME:
 
     def resolve_id(self, info):
         return self.uuid
 
-    def resolve_out(self, info):
-        if info.fund == self.from_fund:
-            return False
-        elif info.fund == self.to_fund:
-            return False
-        else:
-            raise ValueError
+    def resolve_amount(self, info):
+        return self.amount
+
+    # def resolve_balance(self, info):
+    #    return Balance(**self.balance)
 
 
 class WithdrawInput(graphene.InputObjectType):
@@ -244,10 +243,10 @@ class Query(graphene.ObjectType):
     @login_required
     def resolve_ledger_list(self, info):
         shop_user = info.context.user.shop_user
-        fund = Fund.objects.get(shop_user=shop_user)
-        setattr(info, "fund", fund)
+        fund = shop_user.get_user_fund()
+        # setattr(info, "fund", fund)
 
-        return FundAction.objects.filter(Q(from_fund=fund) | Q(to_fund=fund))
+        return FundTransfer.objects.filter(Q(from_fund=fund) | Q(to_fund=fund))
 
     # def resolve_test_order_info(self, info, order_id, **kw):
     #    from wechat_django.pay.models import UnifiedOrder
