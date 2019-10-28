@@ -172,7 +172,6 @@ class WalletTests(JSONWebTokenTestCase):
                 status
                 orderId
                 createdAt
-                out
               }
             }
              pageInfo{
@@ -194,7 +193,6 @@ class WalletTests(JSONWebTokenTestCase):
             "status": "SUCCESS",
             "orderId": "1",
             "createdAt": transfer.created_at.isoformat(),
-            "out": False,
         }
         self.assertDictEqual(
             ordered_dict_2_dict(data.data["ledgerList"]["edges"][0]["node"]), expected

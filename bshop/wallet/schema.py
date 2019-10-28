@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 class Ledger(DjangoObjectType):
     id = graphene.ID(required=True)
     amount = gtype.Decimal()
-    out = graphene.Boolean()
     # balance = graphene.Field(Balance)
 
     class Meta:
@@ -36,14 +35,11 @@ class Ledger(DjangoObjectType):
         return self.uuid
 
     def resolve_amount(self, info):
-        return self.amount
-
-    def resolve_out(self, info):
         fund = info.context.fund
         if fund == self.from_fund:
-            return True
-        elif fund == self.to_fund:
-            return False
+            return self.amount * -1
+
+        return self.amount
 
         logger.exception("not in or out")
         return True
