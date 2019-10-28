@@ -161,17 +161,29 @@ class WalletTests(JSONWebTokenTestCase):
         self.assertDictEqual(ordered_dict_2_dict(data.data["fund"]), expected)
 
         gql = """
-        query {
-          ledgerList{
-            id
-            type
-            amount
-            note
-            status
-            orderId
+        query _($before: String) {
+          ledgerList(before: $before){
+            edges{
+              node{
+                id
+                type
+                amount
+                note
+                status
+                orderId
+                createdAt
+              }
+            }
+             pageInfo{
+                startCursor
+                endCursor
+                hasNextPage
+                hasPreviousPage
+             }
           }
         }"""
-        data = self.client.execute(gql)
+        variables = {"before": None}
+        data = self.client.execute(gql, variables)
         self.assertIsNone(data.errors)
         expected = {
             "id": str(transfer.uuid),
@@ -180,8 +192,16 @@ class WalletTests(JSONWebTokenTestCase):
             "note": "test deposit",
             "status": "SUCCESS",
             "orderId": "1",
+            "createdAt": transfer.created_at.isoformat(),
         }
-        self.assertDictEqual(ordered_dict_2_dict(data.data["ledgerList"][0]), expected)
+        self.assertDictEqual(
+            ordered_dict_2_dict(data.data["ledgerList"]["edges"][0]["node"]), expected
+        )
+        page_info = data.data["ledgerList"]["pageInfo"]
+        self.assertIsNotNone(page_info["startCursor"])
+        self.assertIsNotNone(page_info["endCursor"])
+        self.assertIsNotNone(page_info["hasNextPage"])
+        self.assertIsNotNone(page_info["hasPreviousPage"])
 
     def test_unhold(self):
         hold_fund = HoldFundFactory(expired_at=utc_now())

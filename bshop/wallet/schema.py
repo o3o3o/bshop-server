@@ -1,7 +1,7 @@
 import logging
 
 import graphene
-from graphene_django import DjangoObjectType
+from graphene_django import DjangoObjectType, DjangoConnectionField
 from graphql_jwt.decorators import login_required
 from django.db.models import Q
 from django.db import transaction
@@ -21,14 +21,15 @@ logger = logging.getLogger(__name__)
 
 
 class Ledger(DjangoObjectType):
-    id = graphene.UUID()
+    id = graphene.ID(required=True)
     amount = gtype.Decimal()
     # balance = graphene.Field(Balance)
 
     class Meta:
         model = FundTransfer
-        only_fields = ("type", "order_id", "note", "status")
+        only_fields = ("type", "order_id", "note", "status", "created_at")
         order_by = "id"  # FIXME:
+        interfaces = (graphene.relay.Node,)
 
     def resolve_id(self, info):
         return self.uuid
@@ -225,7 +226,7 @@ class FundQL(DjangoObjectType):
 
 class Query(graphene.ObjectType):
     fund = graphene.Field(FundQL)
-    ledger_list = graphene.List(Ledger)
+    ledger_list = DjangoConnectionField(Ledger)
     vendor_receive_pay_qr = graphene.Field(VendorInfo)
     order_info = graphene.Field(
         OrderInfo, provider=graphene.Argument(LoginProvider), order_id=graphene.String()
@@ -241,10 +242,9 @@ class Query(graphene.ObjectType):
             return FundQL(currency="CNY")
 
     @login_required
-    def resolve_ledger_list(self, info):
+    def resolve_ledger_list(self, info, **kw):
         shop_user = info.context.user.shop_user
         fund = shop_user.get_user_fund()
-        # setattr(info, "fund", fund)
 
         return FundTransfer.objects.filter(Q(from_fund=fund) | Q(to_fund=fund))
 
