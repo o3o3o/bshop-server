@@ -10,4 +10,4 @@ class Decimal(OldDecimal):
             assert isinstance(
                 dec, _Decimal
             ), 'Received not compatible Decimal "{}"'.format(repr(dec))
-        return str(dec.normalize())
+        return "{:f}".format(dec.normalize())
