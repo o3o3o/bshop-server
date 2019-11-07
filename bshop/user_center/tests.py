@@ -133,6 +133,9 @@ class UserTests(TestCase):
                   me{
                     phone
                     id
+                    isVendor
+                    vendorName
+
                   }
               }
             }
@@ -143,6 +146,12 @@ class UserTests(TestCase):
             self.assertIsNotNone(data.data["signIn"]["token"])
             self.assertEquals(data.data["signIn"]["me"]["phone"], phone)
             self.assertEquals(data.data["signIn"]["me"]["id"], str(user.shop_user.uuid))
+            self.assertEquals(
+                data.data["signIn"]["me"]["isVendor"], user.shop_user.is_vendor
+            )
+            self.assertEquals(
+                data.data["signIn"]["me"]["vendorName"], user.shop_user.vendor_name
+            )
 
             user.delete()
 

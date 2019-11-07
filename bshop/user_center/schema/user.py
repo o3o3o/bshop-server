@@ -45,7 +45,7 @@ class Me(BaseUserQL, DjangoObjectType):
 
     class Meta:
         model = ShopUser
-        only_fields = ("is_vendor", "phone")
+        only_fields = ("is_vendor", "phone", "vendor_name")
 
 
 class UpdateUserInfoInput(graphene.InputObjectType):
