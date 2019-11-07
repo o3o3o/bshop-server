@@ -13,7 +13,7 @@ from common import exceptions
 from common.phone import parse_phone
 from common.ratelimit import ratelimit
 from common.schema import Result, LoginProvider
-from user_center.schema.user import Me
+from user_center.schema.user import Me, UpdateUserInfoInput
 from user_center.models import ShopUser
 from user_center.auth import has_verified_phone, verify_code, request_verify_code
 
@@ -135,13 +135,14 @@ class SignUp(graphene.Mutation):
         phone = graphene.String(required=True)
         provider = graphene.Argument(LoginProvider)
         auth_code = graphene.String(description="signUp and bind account")
+        user_info = UpdateUserInfoInput(name="userInfo")
 
     me = graphene.Field(Me)
     token = graphene.String()
     refresh_token = graphene.String()
 
     @require_verified_phone
-    def mutate(self, info, phone, provider=None, auth_code=None, **kw):
+    def mutate(self, info, phone, provider=None, auth_code=None, user_info=None):
         try:
             phone = parse_phone(phone)
         except exceptions.InvalidPhone as e:
@@ -161,6 +162,11 @@ class SignUp(graphene.Mutation):
                 exceptions.CodeBeUsed,
             ) as e:
                 raise exceptions.GQLError(e.message)
+
+        if user_info:
+            for k, v in user_info.items():
+                setattr(shop_user, k, v)
+                shop_user.save(update_fields=[k])
 
         token = get_token(shop_user.user)
         refresh_token = create_refresh_token(shop_user.user)

@@ -65,5 +65,6 @@ class UpdateUserInfo(graphene.Mutation):
         shop_user = info.context.user.shop_user
         for k, v in params.items():
             setattr(shop_user, k, v)
+            # TODO: merge one sql
             shop_user.save(update_fields=[k])
         return Result(success=True, message="")
