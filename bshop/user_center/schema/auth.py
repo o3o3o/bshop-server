@@ -133,13 +133,15 @@ class SignIn(graphene.Mutation):
 class SignUp(graphene.Mutation):
     class Arguments:
         phone = graphene.String(required=True)
+        provider = graphene.Argument(LoginProvider)
+        auth_code = graphene.String(description="signUp and bind account")
 
     me = graphene.Field(Me)
     token = graphene.String()
     refresh_token = graphene.String()
 
     @require_verified_phone
-    def mutate(self, info, phone):
+    def mutate(self, info, phone, provider=None, auth_code=None, **kw):
         try:
             phone = parse_phone(phone)
         except exceptions.InvalidPhone as e:
@@ -149,6 +151,16 @@ class SignUp(graphene.Mutation):
             shop_user = ShopUser.objects.get(phone=phone)
         except ShopUser.DoesNotExist:
             shop_user = ShopUser.objects.create_user(phone=phone)
+
+        if provider and auth_code:
+            try:
+                shop_user.bind_third_account(provider, auth_code)
+            except (
+                exceptions.AlreadyBinded,
+                exceptions.DoNotSupportBindType,
+                exceptions.CodeBeUsed,
+            ) as e:
+                raise exceptions.GQLError(e.message)
 
         token = get_token(shop_user.user)
         refresh_token = create_refresh_token(shop_user.user)
