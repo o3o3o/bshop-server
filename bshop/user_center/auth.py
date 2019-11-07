@@ -38,11 +38,14 @@ def get_random_code():
 
 
 def request_verify_code(request, phone):
-    code = get_random_code()
-
     phone = parse_phone(phone)
 
-    send_verify_code(request, phone, code)
+    if phone in settings.TEST_SMS_ACCOUNT:
+        code = "123456"
+    else:
+        code = get_random_code()
+        send_verify_code(request, phone, code)
+
     request.session["verify_code"] = {
         "phone": phone,
         "code": code,
