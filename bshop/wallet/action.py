@@ -107,7 +107,7 @@ def do_cash_back(
     # TODO more cash back stragety
     csetting = CashBackSettings()
 
-    if amount <= csetting.threshold:
+    if amount < csetting.threshold:
         return
 
     fund = user.get_user_fund()

@@ -180,7 +180,11 @@ class Transfer(graphene.Mutation):
 
         # TODO:
         # 3. do transfer
-        to_user = ShopUser.objects.get(uuid=params.to)
+        try:
+            to_user = ShopUser.objects.get(uuid=params.to)
+        except ShopUser.DoesNotExist:
+            raise exceptions.GQLError("no_exist_user")
+
         try:
             do_transfer(
                 from_user=shop_user,
