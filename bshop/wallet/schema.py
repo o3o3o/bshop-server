@@ -28,7 +28,6 @@ class Ledger(DjangoObjectType):
     class Meta:
         model = FundTransfer
         only_fields = ("type", "order_id", "note", "status", "created_at")
-        order_by = "-id"  # FIXME:
         interfaces = (graphene.relay.Node,)
 
     def resolve_id(self, info):
@@ -259,7 +258,9 @@ class Query(graphene.ObjectType):
         info.context.fund = fund
         # setattr(info, "fund", fund)
 
-        return FundTransfer.objects.filter(Q(from_fund=fund) | Q(to_fund=fund))
+        return FundTransfer.objects.filter(
+            Q(from_fund=fund) | Q(to_fund=fund)
+        ).order_by("-id")
 
     # def resolve_test_order_info(self, info, order_id, **kw):
     #    from wechat_django.pay.models import UnifiedOrder
