@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-11-09 02:51+0000\n"
+"POT-Creation-Date: 2019-11-09 03:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +17,30 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#: cashback/apps.py:7 cashback/apps.py:8
+msgid "CashBack"
+msgstr "返现"
+
+#: cashback/models.py:7
+msgid "Deposit Amount"
+msgstr "充值数量"
+
+#: cashback/models.py:9
+msgid "Deposit cash back amount"
+msgstr "充值后,返现数量"
+
+#: cashback/models.py:14
+msgid "Start Time"
+msgstr "开始时间"
+
+#: cashback/models.py:15
+msgid "End Time"
+msgstr "结束时间"
+
+#: cashback/models.py:16
+msgid "PayCashBack Amount"
+msgstr "支付返现额度"
 
 #: provider/apps.py:7
 msgid "Pay Provider"
@@ -73,6 +97,14 @@ msgstr "可提现-资产"
 #: wallet/models.py:63
 msgid "Funds"
 msgstr "可提现-资产"
+
+#: wallet/models.py:136
+msgid "Amount"
+msgstr ""
+
+#: wallet/models.py:137
+msgid "Expired At"
+msgstr ""
 
 #: wallet/models.py:142
 msgid "Hold fund"
