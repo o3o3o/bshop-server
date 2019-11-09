@@ -53,8 +53,8 @@ class Fund(
         ShopUser, models.CASCADE, related_name="user_funds", db_index=True
     )
     # CNY
-    currency = models.CharField(max_length=8, default="CNY", help_text="币种")
-    cash = DecimalField(help_text="可提现余额")
+    currency = models.CharField(max_length=8, default="CNY", verbose_name=_("Currency"))
+    cash = DecimalField(verbose_name=_("Cash"))
 
     objects = FundManager()
 
@@ -156,7 +156,17 @@ class FundTransferManager(models.Manager):
 
 
 class FundTransfer(BaseModel, ModelWithExtraInfo):
-    TYPE_CHOICES = [(x, x) for x in ["WITHDRAW", "DEPOSIT", "CASHBACK", "TRANSFER"]]
+    TYPE_CHOICES = [
+        (x, x)
+        for x in [
+            "WITHDRAW",
+            "DEPOSIT",
+            "TRANSFER",
+            "PAY",
+            "PAY_CASHBACK",
+            "DEPOSIT_CASHBACK",
+        ]
+    ]
     STATUS_CHOICES = [(x, x) for x in ["ADMIN_REQUIRED", "ADMIN_DENIED", "SUCCESS"]]
 
     status = models.CharField(
@@ -186,6 +196,9 @@ class FundTransfer(BaseModel, ModelWithExtraInfo):
         max_length=128, null=True, blank=True, verbose_name=_("Transfer Note")
     )
     order_id = models.CharField(max_length=64, null=True, blank=True)
+    from_shop_user_id = models.ForeignKey(
+        ShopUser, models.SET_NULL, db_index=True, null=True, blank=True
+    )
 
     objects = FundTransferManager()
 

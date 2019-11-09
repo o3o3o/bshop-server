@@ -7,8 +7,8 @@ from common import exceptions
 from common.utils import d0, utc_now
 from user_center.models import ShopUser
 
-from wallet.utils import CashBackSettings
 from wallet.models import Fund, FundAction, FundTransfer, HoldFund
+from cash_back.models import PayCashBack, DepositCashBack
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,42 @@ def do_transfer(
 
 
 @transaction.atomic
+def do_pay(
+    from_user: "ShopUser",
+    to_user: "ShopUser",
+    amount: "Decimal",
+    order_id: str,
+    note: str = None,
+    **kw,
+):
+    fund = to_user.get_user_fund()
+
+    new_fund = Fund.objects.incr_cash(fund.id, amount)
+
+    transfer = FundTransfer.objects.create(
+        to_fund=fund,
+        amount=amount,
+        order_id=order_id,
+        note=note,
+        type="PAY",
+        from_shop_user=from_user,
+        extra_info=kw,
+    )
+
+    FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
+
+    # cash back to payer
+    cash_back_transfer = PayCashBack.objects.do_cash_back(
+        from_user,
+        paied_amount=amount,
+        pay_transfer_id=transfer.id,
+        pay_order_id=order_id,
+    )
+
+    return transfer, cash_back_transfer
+
+
+@transaction.atomic
 def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None, **kw):
     fund = user.get_user_fund()
 
@@ -72,7 +108,10 @@ def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None,
 
     FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
 
-    return transfer
+    cash_back_transfer = DepositCashBack.objects.do_cash_back(
+        user, amount, order_id=order_id, deposit_transfer_id=transfer.id
+    )
+    return transfer, cash_back_transfer
 
 
 @transaction.atomic
@@ -97,35 +136,4 @@ def do_withdraw(
 
     FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
 
-    return transfer
-
-
-@transaction.atomic
-def do_cash_back(
-    user: ShopUser, amount: Decimal, order_id: str = None, note: str = None, **kw
-):
-    # TODO more cash back stragety
-    csetting = CashBackSettings()
-
-    if amount < csetting.threshold:
-        return
-
-    fund = user.get_user_fund()
-
-    note = f"cash_back: {amount}"
-    transfer = FundTransfer.objects.create(
-        to_fund=fund,
-        amount=amount,
-        order_id=order_id,
-        note=note,
-        type="CASHBACK",
-        extra_info=kw,
-    )
-
-    HoldFund.objects.incr_hold(
-        fund, amount, expired_at=utc_now() + timedelta(days=csetting.expired_days)
-    )
-
-    new_fund = Fund.objects.get(id=fund.id)
-    FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
     return transfer

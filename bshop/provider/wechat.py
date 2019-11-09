@@ -19,7 +19,7 @@ from provider import BaseProvider
 from user_center.models import ShopUser
 from wallet.tasks import sync_wechat_order
 from wallet.models import FundTransfer
-from wallet.action import do_deposit, do_transfer, do_cash_back
+from wallet.action import do_deposit, do_pay
 
 
 logger = logging.getLogger(__name__)
@@ -195,9 +195,9 @@ def order_updated(result, order, state, attach, **kwargs):
     user = ShopUser.objects.get_user_by_openid(provider, order.openid)
 
     amount = to_decimal(order.total_fee / 100)
-    is_transfer = bool(order.ext_info and order.ext_info.get("to_user_id"))
+    is_pay = bool(order.ext_info and order.ext_info.get("to_user_id"))
 
-    if is_transfer:
+    if is_pay:
         to_user_id = order.ext_info["to_user_id"]
         to_user = ShopUser.objects.get(id=to_user_id)
         note = "deposit&buy"
@@ -207,12 +207,16 @@ def order_updated(result, order, state, attach, **kwargs):
     # Ensure cocurrent callback in 10 seconds
     with con.lock(lock_name, timeout=10):
         with transaction.atomic():
-            if is_transfer:
-                do_deposit(user, amount, order_id=order.id, note=note)
-                do_transfer(user, to_user, amount, order_id=order.id, note=note)
+            if is_pay:
+                do_pay(
+                    from_user=user,
+                    to_user=to_user,
+                    amount=amount,
+                    order_id=order.id,
+                    note=note,
+                    from_shop_user=user,
+                )
             else:
                 do_deposit(user, amount, order_id=order.id, note=note)
-
-            do_cash_back(user, amount, order_id=order.id, note=note)
 
     logger.info(f"{order} deposit success: {note}")

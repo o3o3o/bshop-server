@@ -6,6 +6,7 @@ from django.contrib.auth.hashers import make_password, check_password
 from provider import get_provider_cls
 from common.base_models import BaseModel, ModelWithExtraInfo
 from common import exceptions
+from common.utils import d0
 
 
 class ShopUserManager(models.Manager):
@@ -140,3 +141,13 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
 
         fund, _ = Fund.objects.get_or_create(shop_user=self)
         return fund
+
+    def get_total_paied_amount(self):
+        from wallet.models import FundTransfer
+
+        return (
+            FundTransfer.objects.filter(type="PAY", from_shop_user=self).aggregate(
+                "amount"
+            )["amount"]
+            or d0
+        )

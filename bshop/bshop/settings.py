@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "wallet",
     "sms_service",
     "provider",
+    "cash_back",
 ]
 
 MIDDLEWARE = [
