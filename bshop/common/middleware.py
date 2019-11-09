@@ -1,4 +1,5 @@
 import pytz
+from django.utils import translation
 from django.utils.timezone import activate
 
 from ipware import get_client_ip
@@ -25,4 +26,5 @@ class AdminTimezoneMiddleware(object):
     def process_request(request):
         if request.path.startswith("/admin"):
             activate(pytz.timezone("Asia/Shanghai"))
+            translation.activate("zh-Hans")
         return request

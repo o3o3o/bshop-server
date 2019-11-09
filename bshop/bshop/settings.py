@@ -69,6 +69,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "common.middleware.AdminTimezoneMiddleware",
+    "common.middleware.ParseRemoteAddrMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -146,6 +148,8 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+LOCALE_PATHS = (os.path.join(BASE_DIR, "locale"),)
 
 LOGGING = {
     "version": 1,
