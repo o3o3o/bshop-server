@@ -3,6 +3,7 @@ from decimal import Decimal
 from datetime import datetime
 from django.db import models, transaction
 from django.utils.functional import cached_property
+from django.utils.translation import gettext_lazy as _
 
 from user_center.models import ShopUser
 from common.utils import d0, utc_now
@@ -52,10 +53,14 @@ class Fund(
         ShopUser, models.CASCADE, related_name="user_funds", db_index=True
     )
     # CNY
-    currency = models.CharField(max_length=8, default="CNY")
-    cash = DecimalField()
+    currency = models.CharField(max_length=8, default="CNY", help_text="币种")
+    cash = DecimalField(help_text="可提现余额")
 
     objects = FundManager()
+
+    class Meta:
+        verbose_name = _("Fund")
+        verbose_name_plural = _("Funds")
 
     def __str__(self):
         return f"fund:{self.id} {self.shop_user.phone}"
@@ -128,10 +133,14 @@ class HoldFund(BaseModel, ModelWithExtraInfo):
         Fund, models.CASCADE, related_name="hold_funds", db_index=True
     )
 
-    amount = DecimalField()
-    expired_at = models.DateTimeField()
+    amount = DecimalField(verbose_name=_("Amount"))
+    expired_at = models.DateTimeField(verbose_name=_("Expired At"))
     order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
     objects = HoldFundManager()
+
+    class Meta:
+        verbose_name = _("Hold fund")
+        verbose_name_plural = _("Hold funds")
 
     def unhold(self):
         self.delete()
@@ -151,7 +160,11 @@ class FundTransfer(BaseModel, ModelWithExtraInfo):
     STATUS_CHOICES = [(x, x) for x in ["ADMIN_REQUIRED", "ADMIN_DENIED", "SUCCESS"]]
 
     status = models.CharField(
-        max_length=16, choices=STATUS_CHOICES, default="SUCCESS", db_index=True
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default="SUCCESS",
+        db_index=True,
+        verbose_name=_("Transfer status"),
     )
 
     # how to support deduct from holdfund?
@@ -162,13 +175,23 @@ class FundTransfer(BaseModel, ModelWithExtraInfo):
         Fund, models.CASCADE, related_name="transfer_as_to", db_index=True, null=True
     )
     amount = DecimalField()
-    type = models.CharField(max_length=16, choices=TYPE_CHOICES, null=True, blank=True)
-    note = models.CharField(max_length=128, null=True, blank=True)
+    type = models.CharField(
+        max_length=16,
+        choices=TYPE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name=_("Transfer Type"),
+    )
+    note = models.CharField(
+        max_length=128, null=True, blank=True, verbose_name=_("Transfer Note")
+    )
     order_id = models.CharField(max_length=64, null=True, blank=True)
 
     objects = FundTransferManager()
 
     class Meta:
+        verbose_name = _("Fund transfer")
+        verbose_name_plural = _("Fund transfers")
         unique_together = (("type", "order_id"),)
 
     def __str__(self):
@@ -193,6 +216,10 @@ class FundAction(BaseModel, ModelWithExtraInfo):
         Fund, models.CASCADE, related_name="fund_actions", db_index=True, null=True
     )
     transfer = models.ForeignKey(FundTransfer, models.CASCADE, null=True)
-    balance = MYJSONField()
+    balance = MYJSONField(verbose_name=_("Current Balance"))
 
     objects = FundActionManager()
+
+    class Meta:
+        verbose_name = _("Fund action")
+        verbose_name_plural = _("Fund actions")

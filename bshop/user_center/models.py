@@ -36,10 +36,18 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="shop_user"
     )
-    phone = models.CharField(max_length=32, null=True, blank=True)
-    nickname = models.CharField(max_length=128, null=True, blank=True, unique=True)
-    avatar_url = models.CharField(max_length=512, null=True, blank=True)
-    wechat_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
+    phone = models.CharField(
+        max_length=32, null=True, blank=True, verbose_name=_("Phone")
+    )
+    nickname = models.CharField(
+        max_length=128, null=True, blank=True, unique=True, verbose_name=_("Nickname")
+    )
+    avatar_url = models.CharField(
+        max_length=512, null=True, blank=True, verbose_name=_("Avatar URL")
+    )
+    wechat_id = models.CharField(
+        max_length=512, null=True, blank=True, unique=True, verbose_name=_("Wechat ID")
+    )
     alipay_id = models.CharField(max_length=512, null=True, blank=True, unique=True)
     vendor_name = models.CharField(
         max_length=128,
@@ -55,6 +63,10 @@ class ShopUser(BaseModel, ModelWithExtraInfo):
     )
 
     objects = ShopUserManager()
+
+    class Meta:
+        verbose_name = _("Shop user")
+        verbose_name_plural = _("Shop users")
 
     def __str__(self):
         return f"Id:{self.id}, Username:{self.user.username}, Phone:{self.phone}"

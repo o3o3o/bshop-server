@@ -1,0 +1,115 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-11-09 02:51+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: provider/apps.py:7
+msgid "Pay Provider"
+msgstr "支付提供商"
+
+#: user_center/apps.py:7 user_center/apps.py:8
+msgid "User center"
+msgstr "用户中心"
+
+#: user_center/models.py:40
+msgid "Phone"
+msgstr "手机号"
+
+#: user_center/models.py:43
+msgid "Nickname"
+msgstr "昵称"
+
+#: user_center/models.py:46
+msgid "Avatar URL"
+msgstr "头像链接"
+
+#: user_center/models.py:49
+msgid "Wechat ID"
+msgstr "微信 ID"
+
+#: user_center/models.py:57
+msgid "Vendor Name"
+msgstr "商家名称"
+
+#: user_center/models.py:59
+msgid "Is vendor"
+msgstr "是否为商家"
+
+#: user_center/models.py:62
+msgid "Payment password"
+msgstr "支付密码"
+
+#: user_center/models.py:68
+msgid "Shop user"
+msgstr "电商用户"
+
+#: user_center/models.py:69
+msgid "Shop users"
+msgstr "电商用户"
+
+#: wallet/apps.py:7 wallet/apps.py:8
+msgid "Wallet"
+msgstr "钱包"
+
+#: wallet/models.py:62
+msgid "Fund"
+msgstr "可提现-资产"
+
+#: wallet/models.py:63
+msgid "Funds"
+msgstr "可提现-资产"
+
+#: wallet/models.py:142
+msgid "Hold fund"
+msgstr "不可提现-资产"
+
+#: wallet/models.py:143
+msgid "Hold funds"
+msgstr "不可提现-资产"
+
+#: wallet/models.py:167
+msgid "Transfer status"
+msgstr "状态"
+
+#: wallet/models.py:183
+msgid "Transfer Type"
+msgstr "类型"
+
+#: wallet/models.py:186
+msgid "Transfer Note"
+msgstr "备注"
+
+#: wallet/models.py:193
+msgid "Fund transfer"
+msgstr "转账"
+
+#: wallet/models.py:194
+msgid "Fund transfers"
+msgstr "转账"
+
+#: wallet/models.py:219
+msgid "Current Balance"
+msgstr "当前余额"
+
+#: wallet/models.py:224
+msgid "Fund action"
+msgstr "资产变更记录"
+
+#: wallet/models.py:225
+msgid "Fund actions"
+msgstr "资产变更记录"
