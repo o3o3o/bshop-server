@@ -121,7 +121,9 @@ class HoldFundManager(models.Manager):
 
     def expired_unhold(self):
         with transaction.atomic():
-            hold_funds = self.select_for_update().filter(expired_at__lte=utc_now())
+            hold_funds = self.select_for_update().filter(
+                expired_at__isnull=False, expired_at__lte=utc_now()
+            )
             for cbf in hold_funds:
                 cbf.unhold()
 
@@ -134,7 +136,9 @@ class HoldFund(BaseModel, ModelWithExtraInfo):
     )
 
     amount = DecimalField(verbose_name=_("Amount"))
-    expired_at = models.DateTimeField(verbose_name=_("Expired At"))
+    expired_at = models.DateTimeField(
+        verbose_name=_("Expired At"), null=True, blank=True
+    )
     order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
     objects = HoldFundManager()
 
@@ -157,22 +161,20 @@ class FundTransferManager(models.Manager):
 
 class FundTransfer(BaseModel, ModelWithExtraInfo):
     TYPE_CHOICES = [
-        (x, x)
-        for x in [
-            "WITHDRAW",
-            "DEPOSIT",
-            "TRANSFER",
-            "PAY",
-            "PAY_CASHBACK",
-            "DEPOSIT_CASHBACK",
-        ]
+        ("WITHDRAW", _("WITHDRAW")),
+        ("DEPOSIT", _("DEPOSIT")),
+        ("TRANSFER", _("TRANSFER")),
+        ("PAY", _("PAY")),
+        ("PAY_CASHBACK", _("PAY_CASHBACK")),
+        ("PAY_CASHBACK4OLD_USER", _("PAY_CASHBACK4OLD_USER")),
+        ("PAY_CASHBACK4NEW_USER", _("PAY_CASHBACK4NEW_USER")),
+        ("DEPOSIT_CASHBACK", _("DEPOSIT_CASHBACK")),
     ]
     STATUS_CHOICES = [(x, x) for x in ["ADMIN_REQUIRED", "ADMIN_DENIED", "SUCCESS"]]
 
     status = models.CharField(
         max_length=16,
         choices=STATUS_CHOICES,
-        default="SUCCESS",
         db_index=True,
         verbose_name=_("Transfer status"),
     )

@@ -93,9 +93,8 @@ def do_pay(
 
 @transaction.atomic
 def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None, **kw):
+    """ 充值与返现的钱，全部进入HoldFund不可提现"""
     fund = user.get_user_fund()
-
-    new_fund = Fund.objects.incr_cash(fund.id, amount)
 
     transfer = FundTransfer.objects.create(
         to_fund=fund,
@@ -105,6 +104,11 @@ def do_deposit(user: ShopUser, amount: Decimal, order_id: str, note: str = None,
         type="DEPOSIT",
         extra_info=kw,
     )
+
+    # Cannot withdraw when expired_at is null
+    HoldFund.objects.incr_hold(fund, transfer.amount)
+
+    new_fund = Fund.objects.get(id=fund.id)
 
     FundAction.objects.add_action(fund, transfer, balance=new_fund.amount_d)
 
