@@ -1,8 +1,16 @@
+# Intro
 
-## Environment
+一个微信电商项目尝试
 
-Python: 3.7.3
-pipenv: latest
+未完成的电商系统小程序后端(Django)， [前端使用Uniapp](https://github.com/o3o3o/bshop-front)
+
+目前有已下功能:
+
+* 简单的商家、用户系统
+* API使用GrqphQL
+* 短信全使用twilio(yunpian)
+* 微信充值、提现
+* 后台管理界面
 
 
 ## Code Style
@@ -21,6 +29,6 @@ docker-compose exec web bash
 $> python manage.py createsuperuser
 ```
 
+## Licence
 
-## Main third-party libraries
-- [django](https://www.djangoproject.com/)
+MIT
