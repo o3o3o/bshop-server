@@ -34,6 +34,7 @@ yunpian-python-sdk = "*"
 django-smsish2 = "==1.3.5"
 django-environ = "*"
 wechat-django = {extras = ["cryptography"],version = "*"}
+coverage = "*"
 
 [requires]
 python_version = "3.7"

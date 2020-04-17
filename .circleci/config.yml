@@ -9,6 +9,7 @@ jobs:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
       - image: circleci/python:3.7.1
+      - image: circleci/redis:5.0.7
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -16,7 +17,12 @@ jobs:
       - image: circleci/postgres:11
         environment:
           POSTGRES_USER: bshop
+          POSTGRES_PASSWORD: bshop
           POSTGRES_DB: bshopdb_test
+          DB_PASS: bshop
+          DB_USER: bshop
+          DB_NAME: bshopdb_test
+          ENABLE_COVERAGE: true
 
     working_directory: ~/repo
 
@@ -43,4 +49,5 @@ jobs:
       - run:
           name: run tests
           command: |
-            pipenv run bshop/manage.py test
+            cd bshop 
+            pipenv run python manage.py test

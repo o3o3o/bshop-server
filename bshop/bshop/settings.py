@@ -256,7 +256,7 @@ AUTHENTICATION_BACKENDS = [
 # Test settings
 TEST_RUNNER = "django_nose.NoseTestSuiteRunner"
 
-if not env.bool("DISABLE_COVERAGE", default=False):
+if env.bool("ENABLE_COVERAGE", default=False):
     NOSE_ARGS = [
         "--with-coverage",
         "--cover-package=gql,wallet,user_center,provider,common",
